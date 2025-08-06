@@ -24,6 +24,7 @@ import {
   Copy,
   FileDown,
   Settings,
+  X,
 } from "lucide-react"
 import { ChangeEvent } from "react"
 import Papa from 'papaparse'
@@ -106,6 +107,9 @@ export default function WorkspacePage() {
   })
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
+  
+  // 预览相关状态
+  const [showPrintPreview, setShowPrintPreview] = useState(false)
 
   // 预览分页相关状态
   const [previewPage, setPreviewPage] = useState(1)
@@ -326,6 +330,11 @@ export default function WorkspacePage() {
   // 新增：导出设置更新函数
   const handleExportSettingChange = (setting: keyof typeof exportSettings, value: any) => {
     setExportSettings(prev => ({ ...prev, [setting]: value }))
+  }
+
+  // 预览打印效果
+  const handlePreviewPrint = () => {
+    setShowPrintPreview(true)
   }
 
   // 新增：PDF导出功能
@@ -1078,13 +1087,14 @@ export default function WorkspacePage() {
                     {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '导出为 PDF'}
                   </Button>
 
-                  <Button variant="outline" size="lg" className="w-full flex items-center gap-2 bg-transparent">
-                    <Printer className="h-4 w-4" />
-                    预览打印页面
-                  </Button>
-                  <Button variant="outline" size="lg" className="w-full flex items-center gap-2 bg-transparent">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="w-full flex items-center gap-2 bg-transparent"
+                    onClick={handlePreviewPrint}
+                  >
                     <Eye className="h-4 w-4" />
-                    单页预览
+                    预览打印效果
                   </Button>
                 </div>
               </div>
@@ -1182,6 +1192,113 @@ export default function WorkspacePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 打印预览弹窗 */}
+      {showPrintPreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">打印预览 - 第1页</h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowPrintPreview(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)]">
+              <div className="space-y-8">
+                {/* 正面页面预览 */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-600 mb-3">正面页面</h4>
+                  <div 
+                    className="bg-white border-2 border-gray-300 mx-auto"
+                    style={{
+                      width: exportSettings.paperSize === 'a4' ? '210mm' : 
+                             exportSettings.paperSize === 'letter' ? '216mm' : '297mm',
+                      height: exportSettings.paperSize === 'a4' ? '297mm' : 
+                              exportSettings.paperSize === 'letter' ? '279mm' : '420mm',
+                      transform: 'scale(0.3)',
+                      transformOrigin: 'top left'
+                    }}
+                  >
+                    {/* 这里显示第一页的正面卡片 */}
+                    <div className="grid grid-cols-2 gap-4 p-4" style={{
+                      gridTemplateColumns: exportSettings.cardsPerPage === 4 ? 'repeat(2, 1fr)' :
+                                          exportSettings.cardsPerPage === 6 ? 'repeat(2, 1fr)' :
+                                          exportSettings.cardsPerPage === 8 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                      gridTemplateRows: exportSettings.cardsPerPage === 4 ? 'repeat(2, 1fr)' :
+                                       exportSettings.cardsPerPage === 6 ? 'repeat(3, 1fr)' :
+                                       exportSettings.cardsPerPage === 8 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)'
+                    }}>
+                      {words.slice(0, exportSettings.cardsPerPage).map((word, index) => (
+                        <div key={`preview-front-${index}`} className="w-24 h-16 bg-white border border-gray-300 flex flex-col">
+                          <div className="h-[40%] bg-gray-100 flex items-center justify-center">
+                            <div className="w-8 h-6 bg-gray-200 rounded"></div>
+                          </div>
+                          <div className="h-[60%] flex flex-col justify-center items-center text-center px-1">
+                            <p className="text-xs font-bold">{word.word || '单词'}</p>
+                            <p className="text-xs text-gray-600">{word.phonetic || '音标'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 反面页面预览 */}
+                <div className="border rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-600 mb-3">反面页面</h4>
+                  <div 
+                    className="bg-white border-2 border-gray-300 mx-auto"
+                    style={{
+                      width: exportSettings.paperSize === 'a4' ? '210mm' : 
+                             exportSettings.paperSize === 'letter' ? '216mm' : '297mm',
+                      height: exportSettings.paperSize === 'a4' ? '297mm' : 
+                              exportSettings.paperSize === 'letter' ? '279mm' : '420mm',
+                      transform: 'scale(0.3)',
+                      transformOrigin: 'top left'
+                    }}
+                  >
+                    {/* 这里显示第一页的反面卡片 */}
+                    <div className="grid grid-cols-2 gap-4 p-4" style={{
+                      gridTemplateColumns: exportSettings.cardsPerPage === 4 ? 'repeat(2, 1fr)' :
+                                          exportSettings.cardsPerPage === 6 ? 'repeat(2, 1fr)' :
+                                          exportSettings.cardsPerPage === 8 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+                      gridTemplateRows: exportSettings.cardsPerPage === 4 ? 'repeat(2, 1fr)' :
+                                       exportSettings.cardsPerPage === 6 ? 'repeat(3, 1fr)' :
+                                       exportSettings.cardsPerPage === 8 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)'
+                    }}>
+                      {words.slice(0, exportSettings.cardsPerPage).map((word, index) => (
+                        <div key={`preview-back-${index}`} className="w-24 h-16 bg-white border border-gray-300 flex flex-col">
+                          <div className="h-[40%] bg-gray-100 flex items-center justify-center">
+                            <p className="text-xs font-bold">{word.chinese || '中文释义'}</p>
+                          </div>
+                          <div className="h-[60%] flex flex-col justify-center items-center text-center px-1">
+                            <p className="text-xs italic">"{word.example || '例句'}"</p>
+                            <p className="text-xs text-gray-600">{word.translation || '翻译'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-end gap-3 p-4 border-t">
+              <Button variant="outline" onClick={() => setShowPrintPreview(false)}>
+                关闭
+              </Button>
+              <Button onClick={handleExportPDF} disabled={isExporting}>
+                {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '开始导出'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
