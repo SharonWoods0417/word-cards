@@ -15,7 +15,6 @@ import {
   Upload,
   Plus,
   FileText,
-  ImageIcon,
   Download,
   Printer,
   Eye,
@@ -28,6 +27,7 @@ import {
 } from "lucide-react"
 import { ChangeEvent } from "react"
 import Papa from 'papaparse'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
 // 1. 定义单词卡片的数据类型（Word接口）
 interface Word {
@@ -97,6 +97,15 @@ export default function WorkspacePage() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle")
   const [uploadMessage, setUploadMessage] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // 新增：导出相关状态
+  const [exportSettings, setExportSettings] = useState({
+    cardsPerPage: 6, // 每页卡片数量
+    alignment: "double" as "double" | "single", // 对齐方式
+    paperSize: "a4" as "a4" | "letter" | "a3", // 纸张尺寸
+  })
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
 
   // 预览分页相关状态
   const [previewPage, setPreviewPage] = useState(1)
@@ -312,6 +321,312 @@ export default function WorkspacePage() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+  }
+
+  // 新增：导出设置更新函数
+  const handleExportSettingChange = (setting: keyof typeof exportSettings, value: any) => {
+    setExportSettings(prev => ({ ...prev, [setting]: value }))
+  }
+
+  // 新增：PDF导出功能
+  const handleExportPDF = async () => {
+    if (isExporting) return
+    
+    setIsExporting(true)
+    setExportProgress(0)
+    
+    try {
+      const validWords = words.filter(word => word.word.trim())
+      if (validWords.length === 0) {
+        alert('请先添加一些单词')
+        return
+      }
+
+      // 创建PDF文档
+      const pdfDoc = await PDFDocument.create()
+      
+      // 尝试使用支持Unicode的字体，如果失败则回退到标准字体
+      let font: any, boldFont: any
+      try {
+        // 尝试嵌入支持Unicode的字体
+        font = await pdfDoc.embedFont(StandardFonts.TimesRoman)
+        boldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold)
+      } catch (error) {
+        console.warn('无法加载Times Roman字体，使用Helvetica:', error)
+        font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+        boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+      }
+
+      // 辅助函数：安全绘制文本，处理不支持的字符
+      const safeDrawText = (page: any, text: string, options: any) => {
+        if (!text || text.trim() === '') return
+        
+        try {
+          // 尝试直接绘制
+          page.drawText(text, options)
+        } catch (error) {
+          console.warn('文本绘制失败，尝试清理:', text, error)
+          
+          // 如果失败，尝试清理文本中的特殊字符
+          let cleanText = text
+            .replace(/[ˈˌːˑ]/g, '') // 移除音标重音符号
+            .replace(/[^\x00-\x7F]/g, '') // 移除所有非ASCII字符
+            .trim()
+          
+          // 如果清理后为空，使用原始文本的ASCII部分
+          if (!cleanText) {
+            cleanText = text.replace(/[^\x00-\x7F]/g, '').trim()
+          }
+          
+          if (cleanText) {
+            try {
+              page.drawText(cleanText, options)
+            } catch (cleanError) {
+              console.warn('清理后仍无法绘制文本:', cleanText, cleanError)
+              // 如果还是失败，绘制一个占位符
+              page.drawText('(text)', options)
+            }
+          }
+        }
+      }
+
+      // 设置页面尺寸（根据选择）
+      let pageWidth = 595.28 // A4宽度（pt）
+      let pageHeight = 841.89 // A4高度（pt）
+      
+      if (exportSettings.paperSize === "letter") {
+        pageWidth = 612 // Letter宽度（pt）
+        pageHeight = 792 // Letter高度（pt）
+      } else if (exportSettings.paperSize === "a3") {
+        pageWidth = 841.89 // A3宽度（pt）
+        pageHeight = 1190.55 // A3高度（pt）
+      }
+      
+      // 卡片尺寸（90mm × 60mm，转换为pt）
+      const cardWidth = 255.12 // 90mm
+      const cardHeight = 170.08 // 60mm
+      
+      // 根据设置计算布局
+      let cardsPerRow = 2
+      let cardsPerCol = 3
+      
+      switch (exportSettings.cardsPerPage) {
+        case 4:
+          cardsPerRow = 2
+          cardsPerCol = 2
+          break
+        case 6:
+          cardsPerRow = 2
+          cardsPerCol = 3
+          break
+        case 8:
+          cardsPerRow = 2
+          cardsPerCol = 4
+          break
+        case 9:
+          cardsPerRow = 3
+          cardsPerCol = 3
+          break
+        default:
+          cardsPerRow = 2
+          cardsPerCol = 3
+      }
+      
+      const totalCardsPerPage = cardsPerRow * cardsPerCol
+      
+      // 计算间距
+      const marginX = (pageWidth - cardsPerRow * cardWidth) / (cardsPerRow + 1)
+      const marginY = (pageHeight - cardsPerCol * cardHeight) / (cardsPerCol + 1)
+
+      // 生成所有页面
+      const totalPages = Math.ceil(validWords.length / totalCardsPerPage)
+      
+      for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+        // 创建正面页面
+        const frontPage = pdfDoc.addPage([pageWidth, pageHeight])
+        
+        // 获取当前页的单词
+        const pageWords = validWords.slice(pageIndex * totalCardsPerPage, (pageIndex + 1) * totalCardsPerPage)
+        
+        // 绘制每张卡片
+        pageWords.forEach((word, cardIndex) => {
+          const row = Math.floor(cardIndex / cardsPerRow)
+          const col = cardIndex % cardsPerRow
+          
+          const x = marginX + col * (cardWidth + marginX)
+          const y = pageHeight - marginY - row * (cardHeight + marginY) - cardHeight
+          
+          // 绘制卡片边框
+          frontPage.drawRectangle({
+            x,
+            y,
+            width: cardWidth,
+            height: cardHeight,
+            borderWidth: 1,
+            borderColor: rgb(0.8, 0.8, 0.8),
+            color: rgb(1, 1, 1),
+          })
+          
+          // 绘制图片占位符（如果有图片URL）
+          if (word.imageUrl) {
+            try {
+              // 这里可以添加图片加载逻辑
+              // 暂时绘制一个占位符
+              frontPage.drawRectangle({
+                x: x + 5,
+                y: y + cardHeight - 60,
+                width: cardWidth - 10,
+                height: 50,
+                color: rgb(0.95, 0.95, 0.95),
+              })
+              safeDrawText(frontPage, '图片', {
+                x: x + cardWidth / 2 - 20,
+                y: y + cardHeight - 35,
+                size: 12,
+                font,
+                color: rgb(0.5, 0.5, 0.5),
+              })
+            } catch (error) {
+              console.log('图片加载失败:', error)
+            }
+          }
+          
+          // 绘制单词
+          safeDrawText(frontPage, word.word, {
+            x: x + 10,
+            y: y + cardHeight - 80,
+            size: 18,
+            font: boldFont,
+            color: rgb(0, 0, 0),
+          })
+          
+          // 绘制音标
+          if (word.phonetic) {
+            safeDrawText(frontPage, word.phonetic, {
+              x: x + 10,
+              y: y + cardHeight - 100,
+              size: 12,
+              font,
+              color: rgb(0.5, 0.5, 0.5),
+            })
+          }
+          
+          // 绘制自然拼读
+          if (word.phonics) {
+            safeDrawText(frontPage, word.phonics, {
+              x: x + 10,
+              y: y + 10,
+              size: 10,
+              font,
+              color: rgb(0.3, 0.3, 0.3),
+            })
+          }
+        })
+        
+        // 如果是双面对齐，创建反面页面
+        if (exportSettings.alignment === "double") {
+          const backPage = pdfDoc.addPage([pageWidth, pageHeight])
+          
+          // 绘制反面卡片
+          pageWords.forEach((word, cardIndex) => {
+            const row = Math.floor(cardIndex / cardsPerRow)
+            const col = cardIndex % cardsPerRow
+            
+            const x = marginX + col * (cardWidth + marginX)
+            const y = pageHeight - marginY - row * (cardHeight + marginY) - cardHeight
+            
+            // 绘制卡片边框
+            backPage.drawRectangle({
+              x,
+              y,
+              width: cardWidth,
+              height: cardHeight,
+              borderWidth: 1,
+              borderColor: rgb(0.8, 0.8, 0.8),
+              color: rgb(1, 1, 1),
+            })
+            
+            // 绘制中文释义（上40%区域，灰底背景）
+            if (word.chinese) {
+              backPage.drawRectangle({
+                x: x + 5,
+                y: y + cardHeight - 60,
+                width: cardWidth - 10,
+                height: 50,
+                color: rgb(0.95, 0.95, 0.95),
+              })
+              
+              // 分行显示中文释义
+              const chineseLines = word.chinese.split('，')
+              chineseLines.forEach((line, lineIndex) => {
+                safeDrawText(backPage, line, {
+                  x: x + 10,
+                  y: y + cardHeight - 45 - lineIndex * 15,
+                  size: 12,
+                  font: boldFont,
+                  color: rgb(0, 0, 0),
+                })
+              })
+            }
+            
+            // 绘制英文例句
+            if (word.example) {
+              const exampleLines = word.example.split(' ').reduce((lines: string[], word: string) => {
+                const lastLine = lines[lines.length - 1] || ''
+                if ((lastLine + ' ' + word).length > 25) {
+                  lines.push(word)
+                } else {
+                  lines[lines.length - 1] = lastLine ? lastLine + ' ' + word : word
+                }
+                return lines
+              }, [])
+              
+              exampleLines.forEach((line, lineIndex) => {
+                safeDrawText(backPage, line, {
+                  x: x + 10,
+                  y: y + 40 - lineIndex * 12,
+                  size: 10,
+                  font,
+                  color: rgb(0, 0, 0),
+                })
+              })
+            }
+            
+            // 绘制中文翻译
+            if (word.translation) {
+              safeDrawText(backPage, word.translation, {
+                x: x + 10,
+                y: y + 10,
+                size: 10,
+                font,
+                color: rgb(0.5, 0.5, 0.5),
+              })
+            }
+          })
+        }
+        
+        setExportProgress(((pageIndex + 1) / totalPages) * 100)
+      }
+      
+      // 生成PDF并下载
+      const pdfBytes = await pdfDoc.save()
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `word-cards-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+    } catch (error) {
+      console.error('PDF导出失败:', error)
+      alert('PDF导出失败，请重试')
+    } finally {
+      setIsExporting(false)
+      setExportProgress(0)
+    }
   }
 
   return (
@@ -621,7 +936,7 @@ export default function WorkspacePage() {
         </Card>
 
         {/* ③ 卡片预览区（严格按比例设计） */}
-        <Card>
+        <Card id="card-preview">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
@@ -753,14 +1068,16 @@ export default function WorkspacePage() {
               <div className="space-y-4">
                 <h3 className="font-semibold">导出选项</h3>
                 <div className="space-y-3">
-                  <Button size="lg" className="w-full flex items-center gap-2 bg-gray-900 hover:bg-gray-800">
+                  <Button 
+                    size="lg" 
+                    className="w-full flex items-center gap-2 bg-gray-900 hover:bg-gray-800"
+                    onClick={handleExportPDF}
+                    disabled={isExporting}
+                  >
                     <FileText className="h-4 w-4" />
-                    导出为 PDF
+                    {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '导出为 PDF'}
                   </Button>
-                  <Button size="lg" className="w-full flex items-center gap-2 bg-gray-900 hover:bg-gray-800">
-                    <ImageIcon className="h-4 w-4" />
-                    导出为 JPG
-                  </Button>
+
                   <Button variant="outline" size="lg" className="w-full flex items-center gap-2 bg-transparent">
                     <Printer className="h-4 w-4" />
                     预览打印页面
@@ -778,7 +1095,10 @@ export default function WorkspacePage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>每页卡片数量</Label>
-                    <Select defaultValue="6">
+                    <Select 
+                      value={exportSettings.cardsPerPage.toString()} 
+                      onValueChange={(value) => handleExportSettingChange('cardsPerPage', parseInt(value))}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -793,7 +1113,10 @@ export default function WorkspacePage() {
 
                   <div className="space-y-2">
                     <Label>对齐方式</Label>
-                    <Select defaultValue="double">
+                    <Select 
+                      value={exportSettings.alignment}
+                      onValueChange={(value) => handleExportSettingChange('alignment', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -839,7 +1162,10 @@ export default function WorkspacePage() {
 
                   <div className="space-y-2">
                     <Label>纸张尺寸</Label>
-                    <Select defaultValue="a4">
+                    <Select 
+                      value={exportSettings.paperSize}
+                      onValueChange={(value) => handleExportSettingChange('paperSize', value)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
