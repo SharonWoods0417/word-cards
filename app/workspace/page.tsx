@@ -98,6 +98,20 @@ export default function WorkspacePage() {
   const [uploadMessage, setUploadMessage] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // 预览分页相关状态
+  const [previewPage, setPreviewPage] = useState(1)
+  const cardsPerPage = 6 // 每页6张卡片
+
+  // 监听words和previewMode变化，自动回到第一页
+  useEffect(() => {
+    setPreviewPage(1)
+  }, [words.length, previewMode])
+
+  // 计算分页数据
+  const totalCards = words.filter((word) => word.word).length
+  const totalPages = Math.max(1, Math.ceil(totalCards / cardsPerPage))
+  const pagedWords = words.filter((word) => word.word).slice((previewPage - 1) * cardsPerPage, previewPage * cardsPerPage)
+
   // 2. 组件挂载后（只在客户端），用useEffect加载localStorage数据
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -119,8 +133,8 @@ export default function WorkspacePage() {
 
   // 5. 手动添加单词的处理函数
   const handleAddWord = () => {
-    // 生成唯一ID：时间戳 + 随机数，确保不重复
-    const newId = Date.now() + Math.floor(Math.random() * 1000)
+    // 生成唯一ID：用当前时间+随机数，保证只在客户端事件中生成
+    const newId = Date.now() + Math.floor(Math.random() * 1000000)
     
     // 创建新的空白单词条目
     const newWord: Word = {
@@ -204,7 +218,7 @@ export default function WorkspacePage() {
             }
             // 数据转换与合并
             const newWords: Word[] = (result.data as any[]).map(row => ({
-              id: Date.now() + Math.floor(Math.random() * 1000000),
+              id: Date.now() + Math.floor(Math.random() * 1000000), // 只在客户端事件中生成
               word: row.word?.trim() || "",
               phonetic: row.phonetic?.trim() || "",
               phonics: row.phonics?.trim() || "",
@@ -625,10 +639,9 @@ export default function WorkspacePage() {
               </div>
 
               <TabsContent value="front" className="mt-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 justify-items-center">
-                  {words
-                    .filter((word) => word.word)
-                    .map((word) => (
+                <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-5 justify-items-center bg-gray-100 max-w-[1200px] mx-auto py-5 px-5">
+                    {pagedWords.map((word) => (
                       <div key={`front-${word.id}`} className="print-card">
                         {/* 正面卡片 - 严格按比例设计 */}
                         <div className="w-48 h-64 bg-white border-2 border-gray-400 flex flex-col">
@@ -644,7 +657,6 @@ export default function WorkspacePage() {
                               <div className="w-20 h-20 bg-gray-200 rounded"></div>
                             )}
                           </div>
-
                           {/* 文字区域 - 占60%高度 */}
                           <div className="h-[60%] flex flex-col justify-center items-center text-center px-4">
                             {/* 单词 + 音标组合，紧贴排列 */}
@@ -654,21 +666,34 @@ export default function WorkspacePage() {
                               {/* 音标 - 小一号字体，紧挨单词下方 */}
                               <p className="text-lg text-gray-700">{word.phonetic || "/ˈwɜːrd/"}</p>
                             </div>
-
                             {/* 拼读拆解 - 居中，纯文字，无装饰 */}
                             <p className="text-base text-black">{word.phonics || "w-or-d"}</p>
                           </div>
                         </div>
                       </div>
                     ))}
+                  </div>
+                  {/* 分页控件 */}
+                  <div className="flex items-center justify-center gap-4 mt-6">
+                    <button
+                      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                      onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
+                      disabled={previewPage === 1}
+                    >上一页</button>
+                    <span className="text-sm">第 {previewPage} / {totalPages} 页</span>
+                    <button
+                      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                      onClick={() => setPreviewPage(p => Math.min(totalPages, p + 1))}
+                      disabled={previewPage === totalPages}
+                    >下一页</button>
+                  </div>
                 </div>
               </TabsContent>
 
               <TabsContent value="back" className="mt-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 justify-items-center">
-                  {words
-                    .filter((word) => word.word)
-                    .map((word) => (
+                <div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-5 justify-items-center bg-gray-100 max-w-[1200px] mx-auto py-5 px-5">
+                    {pagedWords.map((word) => (
                       <div key={`back-${word.id}`} className="print-card">
                         {/* 反面卡片 - 严格按比例设计 */}
                         <div className="w-48 h-64 bg-white border-2 border-gray-400 flex flex-col">
@@ -676,7 +701,6 @@ export default function WorkspacePage() {
                           <div className="h-[40%] bg-gray-100 flex items-center justify-center px-4">
                             <h1 className="text-xl font-bold text-black text-center">{word.chinese || "中文释义"}</h1>
                           </div>
-
                           {/* 例句区域 - 占60%高度 */}
                           <div className="h-[60%] flex flex-col justify-center items-center text-center px-4">
                             <div className="space-y-2">
@@ -693,6 +717,21 @@ export default function WorkspacePage() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                  {/* 分页控件 */}
+                  <div className="flex items-center justify-center gap-4 mt-6">
+                    <button
+                      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                      onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
+                      disabled={previewPage === 1}
+                    >上一页</button>
+                    <span className="text-sm">第 {previewPage} / {totalPages} 页</span>
+                    <button
+                      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                      onClick={() => setPreviewPage(p => Math.min(totalPages, p + 1))}
+                      disabled={previewPage === totalPages}
+                    >下一页</button>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
