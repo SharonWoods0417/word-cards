@@ -683,6 +683,8 @@ export default function WorkspacePage() {
   const COLS = 2;
   const ROWS = 3;
   let PADDING_MM = 10;
+  let PADDING_TOP_MM = 6;  // 上边距改为6mm
+  let PADDING_BOTTOM_MM = 10;  // 下边距保持10mm
   let COL_GAP_MM = 10;
   let ROW_GAP_MM = 6;
 
@@ -1044,7 +1046,6 @@ export default function WorkspacePage() {
                         key={`front-${word.id}`}
                         data={word as WordCardData}
                         mode="preview"
-                        size="md"
                         showImage={true}
                         showPhonetic={true}
                         showPhonics={true}
@@ -1079,7 +1080,6 @@ export default function WorkspacePage() {
                         key={`back-${word.id}`}
                         data={word as WordCardData}
                         mode="preview"
-                        size="md"
                         showImage={true}
                         showPhonetic={true}
                         showPhonics={true}
@@ -1319,7 +1319,7 @@ export default function WorkspacePage() {
                           gridTemplateRows: `repeat(${ROWS}, 1fr)`,
                           columnGap: `${COL_GAP_MM}mm`,
                           rowGap: `${ROW_GAP_MM}mm`,
-                          padding: `${PADDING_MM}mm`,
+                          padding: `${PADDING_TOP_MM}mm ${PADDING_MM}mm ${PADDING_BOTTOM_MM}mm ${PADDING_MM}mm`,
                           boxSizing: 'border-box',
                           width: '100%',
                           height: '100%',
@@ -1336,7 +1336,6 @@ export default function WorkspacePage() {
                             showChinese
                             showExample
                             showTranslation
-                            style={cardStyle}
                           />
                         ))}
                       </div>
@@ -1384,7 +1383,7 @@ export default function WorkspacePage() {
                           gridTemplateRows: `repeat(${ROWS}, 1fr)`,
                           columnGap: `${COL_GAP_MM}mm`,
                           rowGap: `${ROW_GAP_MM}mm`,
-                          padding: `${PADDING_MM}mm`,
+                          padding: `${PADDING_TOP_MM}mm ${PADDING_MM}mm ${PADDING_BOTTOM_MM}mm ${PADDING_MM}mm`,
                           boxSizing: 'border-box',
                           width: '100%',
                           height: '100%',
@@ -1401,7 +1400,6 @@ export default function WorkspacePage() {
                             showChinese
                             showExample
                             showTranslation
-                            style={cardStyle}
                           />
                         ))}
                       </div>
