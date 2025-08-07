@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -110,10 +110,46 @@ export default function WorkspacePage() {
   
   // 预览相关状态
   const [showPrintPreview, setShowPrintPreview] = useState(false)
+  const [previewScale, setPreviewScale] = useState(0.5) // 动态缩放比例
 
   // 预览分页相关状态
   const [previewPage, setPreviewPage] = useState(1)
   const cardsPerPage = 6 // 每页6张卡片
+
+  // 动态计算预览缩放比例 - 使用固定像素值
+  const calculatePreviewScale = useCallback(() => {
+    if (typeof window === 'undefined') return 0.5
+    
+    // A4纸张固定像素尺寸（794 × 1123 px）
+    const a4Width = 794
+    const a4Height = 1123
+    
+    // 获取可用空间（减去modal边距和header）
+    const modalPadding = 16 // 减少padding，最大化可用空间
+    const headerHeight = 60 // header高度
+    const availableWidth = window.innerWidth - (modalPadding * 2) - 16
+    const availableHeight = window.innerHeight - headerHeight - (modalPadding * 2) - 16
+    
+    // 使用用户建议的公式计算缩放比例
+    const scaleRatio = Math.min(
+      availableWidth / (2 * a4Width), // 两张A4页面
+      availableHeight / a4Height
+    ) * 0.97 // 预留 3% 安全边距，确保完全落入容器内
+    
+    // 确保缩放比例在合理范围内
+    return Math.max(0.15, Math.min(0.9, scaleRatio))
+  }, [])
+
+  // 监听窗口大小变化，重新计算缩放比例
+  useEffect(() => {
+    const updateScale = () => {
+      setPreviewScale(calculatePreviewScale())
+    }
+    
+    updateScale()
+    window.addEventListener('resize', updateScale)
+    return () => window.removeEventListener('resize', updateScale)
+  }, [calculatePreviewScale])
 
   // 监听words和previewMode变化，自动回到第一页
   useEffect(() => {
@@ -1196,106 +1232,106 @@ export default function WorkspacePage() {
       {/* 打印预览弹窗 */}
       {showPrintPreview && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-lg max-w-screen-2xl w-full h-full flex flex-col">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold">打印预览 - 第1页</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowPrintPreview(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowPrintPreview(false)}
+                >
+                  关闭
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleExportPDF} 
+                  disabled={isExporting}
+                >
+                  {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '开始导出'}
+                </Button>
+              </div>
             </div>
             
-            <div className="p-6 overflow-auto max-h-[calc(90vh-120px)]">
-              <div className="space-y-8">
-                {/* 正面页面预览 */}
-                <div className="border rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-600 mb-3">正面页面</h4>
+            <div className="flex-grow flex items-center justify-center">
+              {/* 缩放比例显示 - 右上角 */}
+              <div className="absolute top-2 right-2 text-xs text-gray-500 bg-white px-2 py-1 rounded border z-10">
+                {Math.round(previewScale * 100)}%
+              </div>
+              
+              {/* 预览区域容器 - 使用固定像素尺寸 */}
+              <div className="flex items-center justify-center" style={{ 
+                gap: '16px',
+                transform: `scale(${previewScale})`,
+                transformOrigin: 'top center'
+              }}>
+                {/* 第一页正面预览 - A4纸竖向 */}
+                <div className="flex flex-col items-center">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">第一页 - 正面</h4>
                   <div 
-                    className="bg-white border-2 border-gray-300 mx-auto"
+                    className="bg-white shadow-xl"
                     style={{
-                      width: exportSettings.paperSize === 'a4' ? '210mm' : 
-                             exportSettings.paperSize === 'letter' ? '216mm' : '297mm',
-                      height: exportSettings.paperSize === 'a4' ? '297mm' : 
-                              exportSettings.paperSize === 'letter' ? '279mm' : '420mm',
-                      transform: 'scale(0.3)',
-                      transformOrigin: 'top left'
+                      width: '794px',
+                      height: '1123px',
+                      border: '2px dashed #ccc',
+                      position: 'relative'
                     }}
                   >
                     {/* 这里显示第一页的正面卡片 */}
-                    <div className="grid grid-cols-2 gap-4 p-4" style={{
-                      gridTemplateColumns: exportSettings.cardsPerPage === 4 ? 'repeat(2, 1fr)' :
-                                          exportSettings.cardsPerPage === 6 ? 'repeat(2, 1fr)' :
-                                          exportSettings.cardsPerPage === 8 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                      gridTemplateRows: exportSettings.cardsPerPage === 4 ? 'repeat(2, 1fr)' :
-                                       exportSettings.cardsPerPage === 6 ? 'repeat(3, 1fr)' :
-                                       exportSettings.cardsPerPage === 8 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)'
+                    <div className="grid gap-4 p-6 h-full" style={{
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gridTemplateRows: 'repeat(3, 1fr)'
                     }}>
-                      {words.slice(0, exportSettings.cardsPerPage).map((word, index) => (
-                        <div key={`preview-front-${index}`} className="w-24 h-16 bg-white border border-gray-300 flex flex-col">
-                          <div className="h-[40%] bg-gray-100 flex items-center justify-center">
-                            <div className="w-8 h-6 bg-gray-200 rounded"></div>
+                                              {words.slice(0, 6).map((word, index) => (
+                          <div key={`preview-front-${index}`} className="bg-white border border-gray-300 flex flex-col shadow-sm">
+                            <div className="h-[40%] bg-gray-100 flex items-center justify-center">
+                              <div className="w-8 h-6 bg-gray-200 rounded"></div>
+                            </div>
+                            <div className="h-[60%] flex flex-col justify-center items-center text-center px-1">
+                              <p className="text-lg font-bold">{word.word || '单词'}</p>
+                              <p className="text-sm text-gray-600">{word.phonetic || '音标'}</p>
+                            </div>
                           </div>
-                          <div className="h-[60%] flex flex-col justify-center items-center text-center px-1">
-                            <p className="text-xs font-bold">{word.word || '单词'}</p>
-                            <p className="text-xs text-gray-600">{word.phonetic || '音标'}</p>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </div>
                 </div>
 
-                {/* 反面页面预览 */}
-                <div className="border rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-600 mb-3">反面页面</h4>
+                {/* 第一页反面预览 - A4纸竖向 */}
+                <div className="flex flex-col items-center">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">第一页 - 反面</h4>
                   <div 
-                    className="bg-white border-2 border-gray-300 mx-auto"
+                    className="bg-white shadow-xl"
                     style={{
-                      width: exportSettings.paperSize === 'a4' ? '210mm' : 
-                             exportSettings.paperSize === 'letter' ? '216mm' : '297mm',
-                      height: exportSettings.paperSize === 'a4' ? '297mm' : 
-                              exportSettings.paperSize === 'letter' ? '279mm' : '420mm',
-                      transform: 'scale(0.3)',
-                      transformOrigin: 'top left'
+                      width: '794px',
+                      height: '1123px',
+                      border: '2px dashed #ccc',
+                      position: 'relative'
                     }}
                   >
                     {/* 这里显示第一页的反面卡片 */}
-                    <div className="grid grid-cols-2 gap-4 p-4" style={{
-                      gridTemplateColumns: exportSettings.cardsPerPage === 4 ? 'repeat(2, 1fr)' :
-                                          exportSettings.cardsPerPage === 6 ? 'repeat(2, 1fr)' :
-                                          exportSettings.cardsPerPage === 8 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
-                      gridTemplateRows: exportSettings.cardsPerPage === 4 ? 'repeat(2, 1fr)' :
-                                       exportSettings.cardsPerPage === 6 ? 'repeat(3, 1fr)' :
-                                       exportSettings.cardsPerPage === 8 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)'
+                    <div className="grid gap-4 p-6 h-full" style={{
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gridTemplateRows: 'repeat(3, 1fr)'
                     }}>
-                      {words.slice(0, exportSettings.cardsPerPage).map((word, index) => (
-                        <div key={`preview-back-${index}`} className="w-24 h-16 bg-white border border-gray-300 flex flex-col">
-                          <div className="h-[40%] bg-gray-100 flex items-center justify-center">
-                            <p className="text-xs font-bold">{word.chinese || '中文释义'}</p>
+                                              {words.slice(0, 6).map((word, index) => (
+                          <div key={`preview-back-${index}`} className="bg-white border border-gray-300 flex flex-col shadow-sm">
+                            <div className="h-[40%] bg-gray-100 flex items-center justify-center">
+                              <p className="text-lg font-bold">{word.chinese || '中文释义'}</p>
+                            </div>
+                            <div className="h-[60%] flex flex-col justify-center items-center text-center px-1">
+                              <p className="text-sm italic">"{word.example || '例句'}"</p>
+                              <p className="text-sm text-gray-600">{word.translation || '翻译'}</p>
+                            </div>
                           </div>
-                          <div className="h-[60%] flex flex-col justify-center items-center text-center px-1">
-                            <p className="text-xs italic">"{word.example || '例句'}"</p>
-                            <p className="text-xs text-gray-600">{word.translation || '翻译'}</p>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             
-            <div className="flex items-center justify-end gap-3 p-4 border-t">
-              <Button variant="outline" onClick={() => setShowPrintPreview(false)}>
-                关闭
-              </Button>
-              <Button onClick={handleExportPDF} disabled={isExporting}>
-                {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '开始导出'}
-              </Button>
-            </div>
+
           </div>
         </div>
       )}
