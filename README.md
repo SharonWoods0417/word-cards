@@ -9,8 +9,34 @@
 - ✏️ **表格编辑** - 直观的表格界面编辑所有单词字段
 - 👀 **实时预览** - 实时预览卡片的正反面效果
 - 🖨️ **打印预览** - 专业的A4纸打印预览，支持正反面布局
-- 📄 **导出打印** - 支持导出为 PDF/JPG 格式，优化打印布局
+- 📄 **PDF导出** - 支持导出为PDF格式，优化打印布局
 - 🎴 **统一组件** - 使用 CardPreview 组件确保预览和打印效果一致
+- ⚙️ **统一配置** - 一次配置，处处生效的卡片尺寸管理
+
+## 🎯 统一卡片尺寸配置
+
+### 核心特性
+- **一次配置，处处生效** - 所有场景使用统一的卡片尺寸配置
+- **等比缩放** - 网页预览和打印预览保持完全一致的视觉效果
+- **物理尺寸** - 使用毫米(mm)单位确保打印精度
+
+### 配置中心
+所有卡片尺寸和布局参数集中在 `config/cardConfig.ts`：
+
+```typescript
+export const cardDimensions = {
+  preview: { width: 75, height: 90, unit: 'mm' }, // 网页展示
+  print: { width: 75, height: 90, unit: 'mm' },   // 打印/导出
+};
+
+export const pageConfig = {
+  a4: { width: 210, height: 297, unit: 'mm' },    // A4纸
+  cols: 2, rows: 3,                               // 2×3网格
+  card: { width: 75, height: 90, unit: 'mm' },    // 卡片尺寸
+  colGap: 10, rowGap: 6,                          // 间距
+  paddingTop: 6, paddingBottom: 10, paddingSide: 10, // 边距
+};
+```
 
 ## 🖨️ 打印预览功能
 
@@ -20,12 +46,27 @@
 - **卡片尺寸** - 75mm × 90mm，适合裁剪使用
 - **间距优化** - 左右间距10mm，上下间距6mm
 - **居中显示** - 卡片区域在A4纸上自动居中
+- **等比缩放** - 网页预览和打印预览完全一致
 
 ### 预览模式
 - **正面预览** - 显示单词、音标、拼读、图片
 - **反面预览** - 显示中文释义、例句、翻译
-- **实时缩放** - 支持53%缩放比例，适配不同屏幕
+- **实时缩放** - 支持动态缩放比例，适配不同屏幕
 - **尺寸提示** - 在页面标题旁显示当前卡片尺寸
+- **调试模式** - 可切换显示详细的布局参数
+
+## 📄 PDF导出功能
+
+### 统一布局
+- **与打印预览一致** - PDF导出使用相同的布局参数
+- **毫米转点转换** - 自动将mm单位转换为pt单位
+- **精确排版** - 确保PDF中的卡片位置和打印预览完全一致
+
+### 导出设置
+- **A4纸张** - 标准A4尺寸 (210mm × 297mm)
+- **卡片尺寸** - 75mm × 90mm
+- **网格布局** - 2列3行，每页6张卡片
+- **间距控制** - 左右10mm，上下6mm间距
 
 ## 🛠️ 技术栈
 
@@ -35,6 +76,7 @@
 - **UI 组件**: shadcn/ui
 - **状态管理**: React Hooks
 - **数据存储**: localStorage
+- **PDF生成**: pdf-lib
 
 ## 🚀 快速开始
 
@@ -82,7 +124,7 @@ pnpm dev
 1. **进入预览模式** - 点击"预览打印效果"按钮
 2. **查看布局** - 检查A4纸上的卡片排列效果
 3. **调整缩放** - 使用缩放控制查看细节
-4. **导出打印** - 点击"开始导出"生成PDF文件
+4. **导出PDF** - 点击"开始导出"生成PDF文件
 
 ### CSV 导入格式
 
@@ -105,6 +147,8 @@ word-cards-workspace/
 │   ├── CardPreview.tsx   # 统一卡片预览组件
 │   ├── completion-button.tsx      # 单个补全按钮
 │   └── bulk-completion-button.tsx # 批量补全按钮
+├── config/               # 配置文件
+│   └── cardConfig.ts     # 卡片尺寸和布局配置
 ├── hooks/                 # React Hooks
 │   └── use-completion.ts  # 补全功能 Hook
 ├── lib/                   # 工具函数
@@ -119,8 +163,8 @@ word-cards-workspace/
 ## 🎴 CardPreview 组件
 
 ### 功能特性
-- **多模式支持** - preview/print/export 三种渲染模式
-- **尺寸控制** - sm/md/lg 三种尺寸预设
+- **多模式支持** - preview/print 两种渲染模式
+- **统一尺寸** - 使用 config/cardConfig.ts 统一配置
 - **内容控制** - 可选择性显示图片、音标、例句等
 - **打印优化** - 针对A4打印优化的样式和布局
 
@@ -129,12 +173,39 @@ word-cards-workspace/
 <CardPreview
   data={wordData}
   mode="print"
-  size="md"
   showImage={true}
   showPhonetic={true}
   showChinese={true}
 />
 ```
+
+## ⚙️ 配置管理
+
+### 卡片尺寸配置
+修改 `config/cardConfig.ts` 来调整所有场景的卡片尺寸：
+
+```typescript
+// 调整卡片尺寸
+export const cardDimensions = {
+  preview: { width: 75, height: 90, unit: 'mm' },
+  print: { width: 75, height: 90, unit: 'mm' },
+};
+
+// 调整页面布局
+export const pageConfig = {
+  cols: 2,        // 列数
+  rows: 3,        // 行数
+  colGap: 10,     // 列间距(mm)
+  rowGap: 6,      // 行间距(mm)
+  // ... 其他配置
+};
+```
+
+### 配置生效范围
+- ✅ 网页预览卡片尺寸
+- ✅ 打印预览卡片尺寸
+- ✅ PDF导出卡片尺寸
+- ✅ 所有场景的布局参数
 
 ## 🔑 API 配置
 
@@ -153,18 +224,19 @@ word-cards-workspace/
 - 📁 **上传** - CSV文件批量导入
 - ✏️ **编辑** - 表格编辑单词数据  
 - 👀 **预览** - 实时预览卡片效果
-- 🖨️ **导出** - PDF/JPG导出功能
+- 🖨️ **导出** - PDF导出功能
 - 🤖 **补全** - AI自动补全缺失字段
 
 详细的MVP任务清单请查看 [docs/MVP_TASKS.md](./docs/MVP_TASKS.md)
-
-
 
 ### 当前状态
 
 - ✅ 项目基础架构搭建完成
 - ✅ 页面界面结构完成
 - ✅ 基础组件集成完成
+- ✅ 打印预览功能完成
+- ✅ 统一卡片尺寸配置完成
+- ✅ PDF导出功能完成
 - 🔄 MVP功能逻辑开发中...
 
 ## 🤝 贡献指南
@@ -185,6 +257,7 @@ word-cards-workspace/
 - [Tailwind CSS](https://tailwindcss.com/) - CSS 框架
 - [shadcn/ui](https://ui.shadcn.com/) - UI 组件库
 - [v0](https://v0.dev/) - AI 驱动的 UI 生成工具
+- [pdf-lib](https://pdf-lib.js.org/) - PDF 生成库
 
 ---
 
