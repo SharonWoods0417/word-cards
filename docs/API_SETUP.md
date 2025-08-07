@@ -1,125 +1,117 @@
 # API 配置说明
 
-## 🔑 必需的 API 密钥
+## 概述
 
-为了使用字段自动补全功能，需要配置以下 API 密钥：
+单词卡片制作工具需要配置以下 API 密钥来启用自动补全功能：
 
-### 1. OpenRouter API
+1. **OpenRouter API** - 用于补全文本字段（音标、释义、例句、翻译）
+2. **Pexels API** - 用于搜索相关图片
 
-**用途**: 补全文本字段（音标、中文释义、例句、翻译）
-
-**获取步骤**:
-1. 访问 [OpenRouter](https://openrouter.ai/)
-2. 注册并登录账户
-3. 进入 [API Keys](https://openrouter.ai/keys) 页面
-4. 创建新的 API 密钥
-5. 复制密钥到环境变量
-
-**环境变量**:
-```bash
-NEXT_PUBLIC_OPENROUTER_API_KEY=your_openrouter_api_key_here
-```
-
-### 2. Pexels API
-
-**用途**: 搜索相关图片
-
-**获取步骤**:
-1. 访问 [Pexels API](https://www.pexels.com/api/)
-2. 注册并登录账户
-3. 创建新的 API 密钥
-4. 复制密钥到环境变量
-
-**环境变量**:
-```bash
-NEXT_PUBLIC_PEXELS_API_KEY=your_pexels_api_key_here
-```
-
-## ⚙️ 环境变量配置
-
-### 创建环境变量文件
+## 环境变量配置
 
 在项目根目录创建 `.env.local` 文件：
 
 ```bash
-# .env.local
-NEXT_PUBLIC_OPENROUTER_API_KEY=your_openrouter_api_key_here
-NEXT_PUBLIC_PEXELS_API_KEY=your_pexels_api_key_here
-NEXT_PUBLIC_APP_NAME=单词卡片制作工具
-NEXT_PUBLIC_APP_VERSION=1.0.0
+# OpenRouter API 配置
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+# Pexels API 配置  
+PEXELS_API_KEY=your_pexels_api_key_here
 ```
 
-### 注意事项
+## API 服务配置
 
-1. **文件位置**: `.env.local` 文件应放在项目根目录
-2. **Git 忽略**: `.env.local` 已被添加到 `.gitignore`，不会被提交到版本控制
-3. **重启服务**: 修改环境变量后需要重启开发服务器
-4. **前缀要求**: 客户端使用的环境变量必须以 `NEXT_PUBLIC_` 开头
+### 1. OpenRouter API
 
-## 🧪 测试 API 配置
+**用途**: 自动补全单词的音标、中文释义、英文例句和翻译
 
-### 检查配置状态
+**获取方式**:
+1. 访问 [OpenRouter](https://openrouter.ai/)
+2. 注册账号并获取 API 密钥
+3. 将密钥添加到环境变量
 
-在浏览器控制台中运行以下代码检查 API 配置：
+**支持的模型**:
+- GPT-4
+- Claude-3
+- 其他 OpenRouter 支持的模型
 
-```javascript
-// 检查 API 配置
-console.log('OpenRouter API:', !!process.env.NEXT_PUBLIC_OPENROUTER_API_KEY);
-console.log('Pexels API:', !!process.env.NEXT_PUBLIC_PEXELS_API_KEY);
-```
+### 2. Pexels API
 
-### 功能测试
+**用途**: 根据单词搜索相关的高质量图片
 
-1. **文本补全测试**:
-   - 添加一个只有单词的条目
-   - 点击补全按钮
-   - 检查是否自动填充了音标、释义、例句等
+**获取方式**:
+1. 访问 [Pexels](https://www.pexels.com/api/)
+2. 注册开发者账号
+3. 获取 API 密钥
 
-2. **图片补全测试**:
-   - 添加一个没有图片的条目
-   - 点击补全按钮
-   - 检查是否自动填充了图片URL
+**图片特性**:
+- 免费商用授权
+- 高质量图片
+- 支持多种尺寸
 
-## 💰 API 费用说明
+## 功能特性
 
-### OpenRouter API
-- **免费额度**: 通常有免费使用额度
-- **计费方式**: 按 token 使用量计费
-- **成本控制**: 建议设置使用限制
+### 自动补全功能
 
-### Pexels API
-- **免费额度**: 通常有免费使用额度
-- **计费方式**: 按请求次数计费
-- **成本控制**: 建议设置使用限制
+- **音标生成** - 自动生成标准音标
+- **中文释义** - 提供准确的中文翻译
+- **例句生成** - 创建适合儿童的英文例句
+- **翻译补全** - 自动翻译例句为中文
 
-## 🔧 故障排除
+### 图片搜索功能
+
+- **智能匹配** - 根据单词自动搜索相关图片
+- **质量筛选** - 优先显示高质量图片
+- **尺寸适配** - 自动调整图片尺寸适配卡片
+
+### 打印预览功能
+
+- **A4 布局优化** - 210mm × 297mm 标准纸张
+- **2×3 网格排列** - 每页6张卡片
+- **卡片尺寸** - 75mm × 90mm
+- **间距控制** - 左右10mm，上下6mm
+- **居中显示** - 自动居中布局
+
+## 故障排除
 
 ### 常见问题
 
 1. **API 密钥无效**
    - 检查密钥是否正确复制
-   - 确认密钥是否已激活
-   - 检查账户余额
+   - 确认 API 服务是否正常
 
-2. **请求被拒绝**
-   - 检查 API 使用限制
-   - 确认请求格式正确
+2. **补全功能不工作**
    - 检查网络连接
+   - 验证 API 配额是否充足
 
-3. **补全功能不工作**
-   - 检查环境变量是否正确设置
-   - 确认开发服务器已重启
-   - 查看浏览器控制台错误信息
+3. **图片加载失败**
+   - 检查 Pexels API 密钥
+   - 确认图片 URL 是否有效
 
-### 调试步骤
+### 调试模式
 
-1. 打开浏览器开发者工具
-2. 查看 Console 标签页的错误信息
-3. 查看 Network 标签页的 API 请求
-4. 检查环境变量是否正确加载
+启用调试模式查看详细错误信息：
 
-## 📚 相关文档
+```bash
+# 在 .env.local 中添加
+DEBUG=true
+```
 
-- [OpenRouter API 文档](https://openrouter.ai/docs)
-- [Pexels API 文档](https://www.pexels.com/api/)
-- [Next.js 环境变量](https://nextjs.org/docs/basic-features/environment-variables) 
+## 更新日志
+
+### v1.2.0 (最新)
+- ✅ 新增打印预览功能
+- ✅ 实现 CardPreview 统一组件
+- ✅ 优化A4纸布局和卡片尺寸
+- ✅ 添加实时缩放和尺寸提示
+
+### v1.1.0
+- ✅ 实现自动补全功能
+- ✅ 集成图片搜索
+- ✅ 支持 CSV 批量导入
+
+### v1.0.0
+- ✅ 基础单词卡片制作功能
+- ✅ 表格编辑界面
+- ✅ 实时预览功能 

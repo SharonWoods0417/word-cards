@@ -29,6 +29,7 @@ import {
 import { ChangeEvent } from "react"
 import Papa from 'papaparse'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import CardPreview, { WordCardData } from "@/components/CardPreview";
 
 // 1. 定义单词卡片的数据类型（Word接口）
 interface Word {
@@ -674,6 +675,43 @@ export default function WorkspacePage() {
     }
   }
 
+  // 纸张参数
+  const PAGE_WIDTH_MM = 210;
+  const PAGE_HEIGHT_MM = 297;
+  const desiredCardWidth = 75;
+  const CARD_HEIGHT = 90;
+  const COLS = 2;
+  const ROWS = 3;
+  let PADDING_MM = 10;
+  let COL_GAP_MM = 10;
+  let ROW_GAP_MM = 6;
+
+  // 计算最大可用宽度
+  let maxGridWidth = PAGE_WIDTH_MM - 2 * PADDING_MM;
+  let totalCardWidth = COLS * desiredCardWidth + (COLS - 1) * COL_GAP_MM;
+  if (totalCardWidth > maxGridWidth) {
+    // 优先缩小padding到5mm
+    PADDING_MM = 5;
+    maxGridWidth = PAGE_WIDTH_MM - 2 * PADDING_MM;
+    totalCardWidth = COLS * desiredCardWidth + (COLS - 1) * COL_GAP_MM;
+    if (totalCardWidth > maxGridWidth) {
+      // 再缩小colGap到5mm
+      COL_GAP_MM = 5;
+      totalCardWidth = COLS * desiredCardWidth + (COLS - 1) * COL_GAP_MM;
+      if (totalCardWidth > maxGridWidth) {
+        // 最后宽度不能超过最大可用宽度
+        // 但此处直接固定为75mm，不再缩小
+      }
+    }
+  }
+
+  const cardStyle = {
+    width: `${desiredCardWidth}mm`,
+    height: `${CARD_HEIGHT}mm`,
+  };
+  const gridWidth = COLS * desiredCardWidth + (COLS - 1) * COL_GAP_MM + 2 * PADDING_MM;
+  const availableHeight = PAGE_HEIGHT_MM - 2 * PADDING_MM - (ROWS - 1) * ROW_GAP_MM;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto max-w-7xl p-6 space-y-8">
@@ -1002,35 +1040,18 @@ export default function WorkspacePage() {
                 <div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-5 justify-items-center bg-gray-100 max-w-[1200px] mx-auto py-5 px-5">
                     {pagedWords.map((word) => (
-                      <div key={`front-${word.id}`} className="print-card">
-                        {/* 正面卡片 - 严格按比例设计 */}
-                        <div className="w-48 h-64 bg-white border-2 border-gray-400 flex flex-col">
-                          {/* 图片区域 - 占40%高度，垂直居上，无空隙 */}
-                          <div className="h-[40%] flex items-center justify-center bg-gray-100">
-                            {word.imageUrl ? (
-                              <img
-                                src={word.imageUrl || "/placeholder.svg"}
-                                alt={word.word}
-                                className="max-w-full max-h-full object-contain"
-                              />
-                            ) : (
-                              <div className="w-20 h-20 bg-gray-200 rounded"></div>
-                            )}
-                          </div>
-                          {/* 文字区域 - 占60%高度 */}
-                          <div className="h-[60%] flex flex-col justify-center items-center text-center px-4">
-                            {/* 单词 + 音标组合，紧贴排列 */}
-                            <div className="space-y-1 mb-4">
-                              {/* 单词 - 加粗，大字体 */}
-                              <h1 className="text-2xl font-bold text-black leading-tight">{word.word}</h1>
-                              {/* 音标 - 小一号字体，紧挨单词下方 */}
-                              <p className="text-lg text-gray-700">{word.phonetic || "/ˈwɜːrd/"}</p>
-                            </div>
-                            {/* 拼读拆解 - 居中，纯文字，无装饰 */}
-                            <p className="text-base text-black">{word.phonics || "w-or-d"}</p>
-                          </div>
-                        </div>
-                      </div>
+                      <CardPreview
+                        key={`front-${word.id}`}
+                        data={word as WordCardData}
+                        mode="preview"
+                        size="md"
+                        showImage={true}
+                        showPhonetic={true}
+                        showPhonics={true}
+                        showChinese={true}
+                        showExample={true}
+                        showTranslation={true}
+                      />
                     ))}
                   </div>
                   {/* 分页控件 */}
@@ -1054,28 +1075,18 @@ export default function WorkspacePage() {
                 <div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-5 justify-items-center bg-gray-100 max-w-[1200px] mx-auto py-5 px-5">
                     {pagedWords.map((word) => (
-                      <div key={`back-${word.id}`} className="print-card">
-                        {/* 反面卡片 - 严格按比例设计 */}
-                        <div className="w-48 h-64 bg-white border-2 border-gray-400 flex flex-col">
-                          {/* 中文释义区域 - 占40%高度，浅灰色背景 */}
-                          <div className="h-[40%] bg-gray-100 flex items-center justify-center px-4">
-                            <h1 className="text-xl font-bold text-black text-center">{word.chinese || "中文释义"}</h1>
-                          </div>
-                          {/* 例句区域 - 占60%高度 */}
-                          <div className="h-[60%] flex flex-col justify-center items-center text-center px-4">
-                            <div className="space-y-2">
-                              {/* 英文例句 - 斜体 */}
-                              <p className="text-base italic text-black leading-relaxed">
-                                "{word.example || "This is an example sentence."}"
-                              </p>
-                              {/* 中文翻译 - 紧贴下方，间距较小 */}
-                              <p className="text-sm text-gray-700 leading-relaxed">
-                                {word.translation || "这是一个例句翻译。"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <CardPreview
+                        key={`back-${word.id}`}
+                        data={word as WordCardData}
+                        mode="preview"
+                        size="md"
+                        showImage={true}
+                        showPhonetic={true}
+                        showPhonics={true}
+                        showChinese={true}
+                        showExample={true}
+                        showTranslation={true}
+                      />
                     ))}
                   </div>
                   {/* 分页控件 */}
@@ -1253,6 +1264,9 @@ export default function WorkspacePage() {
               </div>
             </div>
             
+            {/* 打印预览A4纸区域上方，显示当前卡片宽高 */}
+            {/* 删除顶部中央的全局尺寸提示div */}
+
             <div className="flex-grow flex items-center justify-center">
               {/* 缩放比例显示 - 右上角 */}
               <div className="absolute top-2 right-2 text-xs text-gray-500 bg-white px-2 py-1 rounded border z-10">
@@ -1267,64 +1281,130 @@ export default function WorkspacePage() {
               }}>
                 {/* 第一页正面预览 - A4纸竖向 */}
                 <div className="flex flex-col items-center">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">第一页 - 正面</h4>
-                  <div 
+                  {/* A4纸标题及尺寸提示 */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 8 }}>
+                    <h4 className="text-sm font-medium text-gray-700 mr-3">
+                      第{previewPage}页 - 正面
+                    </h4>
+                    <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>
+                      卡片宽度：{desiredCardWidth}mm，高度：{CARD_HEIGHT}mm
+                    </span>
+                  </div>
+                  <div
                     className="bg-white shadow-xl"
                     style={{
-                      width: '794px',
-                      height: '1123px',
+                      width: '210mm',
+                      height: '297mm',
                       border: '2px dashed #ccc',
-                      position: 'relative'
+                      position: 'relative',
+                      boxSizing: 'border-box',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'flex-start',
                     }}
                   >
-                    {/* 这里显示第一页的正面卡片 */}
-                    <div className="grid gap-4 p-6 h-full" style={{
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gridTemplateRows: 'repeat(3, 1fr)'
-                    }}>
-                                              {words.slice(0, 6).map((word, index) => (
-                          <div key={`preview-front-${index}`} className="bg-white border border-gray-300 flex flex-col shadow-sm">
-                            <div className="h-[40%] bg-gray-100 flex items-center justify-center">
-                              <div className="w-8 h-6 bg-gray-200 rounded"></div>
-                            </div>
-                            <div className="h-[60%] flex flex-col justify-center items-center text-center px-1">
-                              <p className="text-lg font-bold">{word.word || '单词'}</p>
-                              <p className="text-sm text-gray-600">{word.phonetic || '音标'}</p>
-                            </div>
-                          </div>
+                    <div
+                      style={{
+                        width: `${gridWidth}mm`,
+                        margin: '0 auto',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <div
+                        className="grid"
+                        style={{
+                          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+                          gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+                          columnGap: `${COL_GAP_MM}mm`,
+                          rowGap: `${ROW_GAP_MM}mm`,
+                          padding: `${PADDING_MM}mm`,
+                          boxSizing: 'border-box',
+                          width: '100%',
+                          height: '100%',
+                        }}
+                      >
+                        {words.slice(0, COLS * ROWS).map((word, idx) => (
+                          <CardPreview
+                            key={`preview-print-front-${idx}`}
+                            data={word as WordCardData}
+                            mode="print"
+                            showImage
+                            showPhonetic
+                            showPhonics
+                            showChinese
+                            showExample
+                            showTranslation
+                            style={cardStyle}
+                          />
                         ))}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* 第一页反面预览 - A4纸竖向 */}
                 <div className="flex flex-col items-center">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">第一页 - 反面</h4>
-                  <div 
+                  {/* A4纸标题及尺寸提示 */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 8 }}>
+                    <h4 className="text-sm font-medium text-gray-700 mr-3">
+                      第{previewPage}页 - 反面
+                    </h4>
+                    <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>
+                      卡片宽度：{desiredCardWidth}mm，高度：{CARD_HEIGHT}mm
+                    </span>
+                  </div>
+                  <div
                     className="bg-white shadow-xl"
                     style={{
-                      width: '794px',
-                      height: '1123px',
+                      width: '210mm',
+                      height: '297mm',
                       border: '2px dashed #ccc',
-                      position: 'relative'
+                      position: 'relative',
+                      boxSizing: 'border-box',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'flex-start',
                     }}
                   >
-                    {/* 这里显示第一页的反面卡片 */}
-                    <div className="grid gap-4 p-6 h-full" style={{
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gridTemplateRows: 'repeat(3, 1fr)'
-                    }}>
-                                              {words.slice(0, 6).map((word, index) => (
-                          <div key={`preview-back-${index}`} className="bg-white border border-gray-300 flex flex-col shadow-sm">
-                            <div className="h-[40%] bg-gray-100 flex items-center justify-center">
-                              <p className="text-lg font-bold">{word.chinese || '中文释义'}</p>
-                            </div>
-                            <div className="h-[60%] flex flex-col justify-center items-center text-center px-1">
-                              <p className="text-sm italic">"{word.example || '例句'}"</p>
-                              <p className="text-sm text-gray-600">{word.translation || '翻译'}</p>
-                            </div>
-                          </div>
+                    <div
+                      style={{
+                        width: `${gridWidth}mm`,
+                        margin: '0 auto',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                      }}
+                    >
+                      <div
+                        className="grid"
+                        style={{
+                          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+                          gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+                          columnGap: `${COL_GAP_MM}mm`,
+                          rowGap: `${ROW_GAP_MM}mm`,
+                          padding: `${PADDING_MM}mm`,
+                          boxSizing: 'border-box',
+                          width: '100%',
+                          height: '100%',
+                        }}
+                      >
+                        {words.slice(0, COLS * ROWS).map((word, idx) => (
+                          <CardPreview
+                            key={`preview-print-back-${idx}`}
+                            data={word as WordCardData}
+                            mode="print"
+                            showImage
+                            showPhonetic
+                            showPhonics
+                            showChinese
+                            showExample
+                            showTranslation
+                            style={cardStyle}
+                          />
                         ))}
+                      </div>
                     </div>
                   </div>
                 </div>
