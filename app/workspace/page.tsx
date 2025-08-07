@@ -30,6 +30,7 @@ import { ChangeEvent } from "react"
 import Papa from 'papaparse'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import CardPreview, { WordCardData } from "@/components/CardPreview";
+import { pageConfig, mmToPt } from "@/config/cardConfig";
 
 // 1. 定义单词卡片的数据类型（Word接口）
 interface Word {
@@ -436,49 +437,27 @@ export default function WorkspacePage() {
         }
       }
 
-      // 设置页面尺寸（根据选择）
-      let pageWidth = 595.28 // A4宽度（pt）
-      let pageHeight = 841.89 // A4高度（pt）
-      
-      if (exportSettings.paperSize === "letter") {
-        pageWidth = 612 // Letter宽度（pt）
-        pageHeight = 792 // Letter高度（pt）
-      } else if (exportSettings.paperSize === "a3") {
-        pageWidth = 841.89 // A3宽度（pt）
-        pageHeight = 1190.55 // A3高度（pt）
-      }
-      
-      // 卡片尺寸（90mm × 60mm，转换为pt）
-      const cardWidth = 255.12 // 90mm
-      const cardHeight = 170.08 // 60mm
+      // 设置页面尺寸（A4）
+      let pageWidth = mmToPt(pageConfig.a4.width);
+      let pageHeight = mmToPt(pageConfig.a4.height);
+
+      // 卡片尺寸
+      const cardWidth = mmToPt(pageConfig.card.width);
+      const cardHeight = mmToPt(pageConfig.card.height);
+
+      // 行列数
+      const cardsPerRow = pageConfig.cols;
+      const cardsPerCol = pageConfig.rows;
+
+      // 间距和边距
+      const colGap = mmToPt(pageConfig.colGap);
+      const rowGap = mmToPt(pageConfig.rowGap);
+      const paddingTop = mmToPt(pageConfig.paddingTop);
+      const paddingBottom = mmToPt(pageConfig.paddingBottom);
+      const paddingSide = mmToPt(pageConfig.paddingSide);
       
       // 根据设置计算布局
-      let cardsPerRow = 2
-      let cardsPerCol = 3
-      
-      switch (exportSettings.cardsPerPage) {
-        case 4:
-          cardsPerRow = 2
-          cardsPerCol = 2
-          break
-        case 6:
-          cardsPerRow = 2
-          cardsPerCol = 3
-          break
-        case 8:
-          cardsPerRow = 2
-          cardsPerCol = 4
-          break
-        case 9:
-          cardsPerRow = 3
-          cardsPerCol = 3
-          break
-        default:
-          cardsPerRow = 2
-          cardsPerCol = 3
-      }
-      
-      const totalCardsPerPage = cardsPerRow * cardsPerCol
+      let totalCardsPerPage = cardsPerRow * cardsPerCol
       
       // 计算间距
       const marginX = (pageWidth - cardsPerRow * cardWidth) / (cardsPerRow + 1)
@@ -676,17 +655,17 @@ export default function WorkspacePage() {
   }
 
   // 纸张参数
-  const PAGE_WIDTH_MM = 210;
-  const PAGE_HEIGHT_MM = 297;
-  const desiredCardWidth = 75;
-  const CARD_HEIGHT = 90;
-  const COLS = 2;
-  const ROWS = 3;
-  let PADDING_MM = 10;
-  let PADDING_TOP_MM = 6;  // 上边距改为6mm
-  let PADDING_BOTTOM_MM = 10;  // 下边距保持10mm
-  let COL_GAP_MM = 10;
-  let ROW_GAP_MM = 6;
+  const PAGE_WIDTH_MM = pageConfig.a4.width;
+  const PAGE_HEIGHT_MM = pageConfig.a4.height;
+  const desiredCardWidth = pageConfig.card.width;
+  const CARD_HEIGHT = pageConfig.card.height;
+  const COLS = pageConfig.cols;
+  const ROWS = pageConfig.rows;
+  let PADDING_MM = pageConfig.paddingSide;
+  let PADDING_TOP_MM = pageConfig.paddingTop;
+  let PADDING_BOTTOM_MM = pageConfig.paddingBottom;
+  let COL_GAP_MM = pageConfig.colGap;
+  let ROW_GAP_MM = pageConfig.rowGap;
 
   // 计算最大可用宽度
   let maxGridWidth = PAGE_WIDTH_MM - 2 * PADDING_MM;
