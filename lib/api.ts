@@ -70,34 +70,91 @@ export async function completeTextFields(
       return { success: false, error: 'OpenRouter API key not configured' };
     }
 
-    // TODO: 实现 OpenRouter API 调用
-    // 这里将根据字段类型生成不同的提示词
-    const prompts = fields.map(field => {
-      switch (field) {
-        case 'phonetic':
-          return `请为英文单词 "${word}" 提供准确的音标，格式为 /音标/`;
-        case 'chinese':
-          return `请为英文单词 "${word}" 提供准确的中文释义`;
-        case 'example':
-          return `请为英文单词 "${word}" 提供一个简单易懂的英文例句`;
-        case 'translation':
-          return `请为英文单词 "${word}" 的例句提供准确的中文翻译`;
-        default:
-          return '';
+    // 构建统一的提示词
+    const systemPrompt = `你是一个专业的英语教学助手，专门为儿童制作单词卡片。请根据要求提供准确、简洁的内容。`;
+    
+    const userPrompt = `请为英文单词 "${word}" 补全以下字段，只返回JSON格式的结果，不要包含任何其他文字：
+
+${fields.map(field => {
+  switch (field) {
+    case 'phonetic':
+      return '- phonetic: 音标，格式为 /音标/，例如 /ˈæpəl/';
+    case 'chinese':
+      return '- chinese: 中文释义，简洁明了';
+    case 'example':
+      return '- example: 英文例句，简单易懂，适合儿童';
+    case 'translation':
+      return '- translation: 例句的中文翻译';
+    default:
+      return '';
+  }
+}).join('\n')}
+
+请返回格式：
+{
+  "phonetic": "音标",
+  "chinese": "中文释义", 
+  "example": "英文例句",
+  "translation": "中文翻译"
+}`;
+
+    // 调用 OpenRouter API
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${config.openRouterApiKey}`,
+        'HTTP-Referer': window.location.origin,
+        'X-Title': 'Word Cards Generator',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 500,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API 请求失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      throw new Error('OpenRouter API 返回内容为空');
+    }
+
+    // 解析返回的JSON内容
+    let parsedData: Record<string, string>;
+    try {
+      // 尝试直接解析JSON
+      parsedData = JSON.parse(content);
+    } catch {
+      // 如果直接解析失败，尝试提取JSON部分
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsedData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('无法解析API返回的内容');
+      }
+    }
+
+    // 构建返回数据
+    const data: Record<string, string> = {};
+    fields.forEach(field => {
+      if (parsedData[field]) {
+        data[field] = parsedData[field];
       }
     });
 
-    // 模拟 API 调用（实际实现时替换）
-    console.log('OpenRouter API 调用:', { word, fields, prompts });
-    
     return {
       success: true,
-      data: {
-        phonetic: fields.includes('phonetic') ? `/${word}/` : undefined,
-        chinese: fields.includes('chinese') ? `${word}的中文意思` : undefined,
-        example: fields.includes('example') ? `This is an example sentence for ${word}.` : undefined,
-        translation: fields.includes('translation') ? `这是${word}的例句翻译。` : undefined,
-      }
+      data,
     };
   } catch (error) {
     return {
@@ -118,14 +175,39 @@ export async function searchImage(word: string): Promise<CompletionResponse> {
       return { success: false, error: 'Pexels API key not configured' };
     }
 
-    // TODO: 实现 Pexels API 调用
-    console.log('Pexels API 调用:', { word });
+    // 调用 Pexels API 搜索图片
+    const searchUrl = `${PEXELS_API_URL}?query=${encodeURIComponent(word)}&per_page=1&orientation=landscape`;
     
-    // 模拟 API 调用（实际实现时替换）
+    const response = await fetch(searchUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': config.pexelsApiKey,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Pexels API 请求失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    const photos = result.photos;
+    
+    if (!photos || photos.length === 0) {
+      throw new Error(`未找到与单词 "${word}" 相关的图片`);
+    }
+
+    // 获取第一张图片的URL
+    const photo = photos[0];
+    const imageUrl = photo.src?.medium || photo.src?.large || photo.src?.original;
+    
+    if (!imageUrl) {
+      throw new Error('图片URL无效');
+    }
+
     return {
       success: true,
       data: {
-        imageUrl: `https://example.com/images/${word}.jpg`
+        imageUrl,
       }
     };
   } catch (error) {

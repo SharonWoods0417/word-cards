@@ -74,7 +74,8 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: mode === "preview" ? 12 : 8,
+          padding: 0,
+          overflow: "hidden",
         }}
       >
         {/* 正面：图片或占位符 */}
@@ -85,10 +86,11 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                 src={data.imageUrl}
                 alt={data.word}
                 style={{
-                  maxWidth: "90%",
-                  maxHeight: "90%",
+                  width: "100%",
+                  height: "100%",
                   objectFit: "contain",
-                  borderRadius: 6,
+                  objectPosition: "center",
+                  borderRadius: 0,
                 }}
                 draggable={false}
               />

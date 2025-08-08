@@ -32,6 +32,8 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
 import CardPreview, { WordCardData } from "@/components/CardPreview";
 import { pageConfig, mmToPt } from "@/config/cardConfig";
+import { CompletionButton } from "@/components/completion-button";
+import { BulkCompletionButton } from "@/components/bulk-completion-button";
 
 // 1. 定义单词卡片的数据类型（Word接口）
 interface Word {
@@ -235,6 +237,18 @@ export default function WorkspacePage() {
   // 7. 删除单词功能
   const handleDeleteWord = (id: number) => {
     setWords(prevWords => prevWords.filter(word => word.id !== id))
+  }
+
+  // 8. 补全单词功能
+  const handleCompleteWord = (updatedWord: Word) => {
+    setWords(prevWords => prevWords.map(word =>
+      word.id === updatedWord.id ? updatedWord : word
+    ))
+  }
+
+  // 9. 批量补全功能
+  const handleBulkComplete = (updatedWords: Word[]) => {
+    setWords(updatedWords)
   }
 
   // 新增：文件上传处理函数
@@ -922,16 +936,24 @@ export default function WorkspacePage() {
               <CardDescription>逐个添加单词数据</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* 添加单词按钮 */}
-              <Button 
-                onClick={handleAddWord}
-                className="w-full"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                添加新单词
-              </Button>
+              {/* 添加单词按钮和批量补全按钮 */}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleAddWord}
+                  className="flex-1"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  添加新单词
+                </Button>
+                <BulkCompletionButton
+                  words={words}
+                  onComplete={handleBulkComplete}
+                  size="sm"
+                  variant="outline"
+                />
+              </div>
               
-              {/* 单词列表 */}
+                              {/* 单词列表 */}
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {words.map((word) => (
                   <div key={word.id} className="flex items-center gap-2 p-3 border rounded-lg">
@@ -949,14 +971,22 @@ export default function WorkspacePage() {
                         className="text-sm"
                       />
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteWord(word.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <CompletionButton
+                        word={word}
+                        onComplete={handleCompleteWord}
+                        size="sm"
+                        variant="ghost"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteWord(word.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
