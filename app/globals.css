@@ -129,15 +129,6 @@
     margin: 0; 
   }
   
-  /* 防止空白页 */
-  .print-container:last-child {
-    page-break-after: avoid !important;
-  }
-  
-  .print-page:last-child {
-    page-break-after: avoid !important;
-  }
-  
   html, body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -147,23 +138,37 @@
     display: none !important; 
   }
   
-  /* 确保打印容器为A4尺寸 */
+  /* 打印模式控制 */
+  body[data-print="front"] #print-back {
+    display: none !important;
+  }
+  
+  body[data-print="back"] #print-front {
+    display: none !important;
+  }
+  
+  /* 容器不要固定高度！让它自然撑开多页 */
   .print-container {
     width: 210mm !important;
-    height: 297mm !important;
     margin: 0 !important;
     padding: 0 !important;
   }
   
-  /* 确保打印页面居中显示 */
+  /* 每个页面本身才是 A4 高度 */
   .print-page {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
+    display: block !important;
     width: 210mm !important;
     height: 297mm !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 只在相邻 .print-page 之间分页 */
+  .print-page + .print-page {
+    break-before: page;
+    page-break-before: always;
   }
   
   /* 确保网格容器居中 */

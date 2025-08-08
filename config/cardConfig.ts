@@ -28,7 +28,7 @@ export const pageConfig = {
   colGap: 10, // mm
   rowGap: 6,  // mm
   paddingTop: 6, // mm
-  paddingBottom: 10, // mm
+  paddingBottom: 9, // mm - 调整为9mm，确保总高度≤297mm
   paddingSide: 10, // mm
 };
 

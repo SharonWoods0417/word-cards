@@ -104,33 +104,13 @@ export default function WorkspacePage() {
   
   // 全部打印功能 - 打印所有页面（正面和反面）
   const handlePrintAll = () => {
-    const frontContainer = document.getElementById('print-front')
-    const backContainer = document.getElementById('print-back')
-    
-    if (frontContainer && backContainer) {
-      console.log('全部打印 - 显示所有容器')
-      
-      // 显示所有打印容器
-      frontContainer.classList.remove('hidden')
-      frontContainer.classList.add('print:block')
-      backContainer.classList.remove('hidden')
-      backContainer.classList.add('print:block')
-      
-      // 延迟一下再打印，确保DOM更新完成
-      setTimeout(() => {
-        console.log('开始全部打印...')
-        window.print()
-        
-        // 打印后隐藏所有容器
-        setTimeout(() => {
-          frontContainer.classList.add('hidden')
-          frontContainer.classList.remove('print:block')
-          backContainer.classList.add('hidden')
-          backContainer.classList.remove('print:block')
-          console.log('隐藏所有容器')
-        }, 500)
-      }, 100)
-    }
+    // 不动任何 class，让 print 媒体查询接管显示
+    // 等待一帧，保证 DOM & 布局都稳定
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+      });
+    });
   }
   
   // 新增：文件上传相关状态
@@ -185,9 +165,10 @@ export default function WorkspacePage() {
 
 
   // 计算分页数据
-  const totalCards = words.filter((word) => word.word).length
+  const wordsFiltered = words.filter(w => !!w.word?.trim());
+  const totalCards = wordsFiltered.length
   const totalPages = Math.max(1, Math.ceil(totalCards / cardsPerPage))
-  const pagedWords = words.filter((word) => word.word).slice(
+  const pagedWords = wordsFiltered.slice(
     (previewPage - 1) * cardsPerPage, 
     previewPage * cardsPerPage
   )
@@ -436,76 +417,36 @@ export default function WorkspacePage() {
 
   // 打印正面
   const handlePrintFront = () => {
-    const frontContainer = document.getElementById('print-front')
-    const backContainer = document.getElementById('print-back')
+    // 设置打印模式为正面
+    document.body.setAttribute('data-print', 'front')
     
-    if (frontContainer && backContainer) {
-      console.log('打印正面 - 显示正面容器，隐藏反面容器')
-      
-      // 先重置所有容器状态
-      frontContainer.classList.add('hidden')
-      frontContainer.classList.remove('print:block')
-      backContainer.classList.add('hidden')
-      backContainer.classList.remove('print:block')
-      
-      // 显示正面容器，隐藏反面容器
-      frontContainer.classList.remove('hidden')
-      frontContainer.classList.add('print:block')
-      backContainer.classList.add('hidden')
-      backContainer.classList.remove('print:block')
-      
-      // 延迟一下再打印，确保DOM更新完成
-      setTimeout(() => {
-        console.log('开始打印正面...')
+    // 等待一帧，保证 DOM & 布局都稳定
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
         window.print()
-        
-        // 打印后重置所有容器状态
+        // 打印完成后清除属性
         setTimeout(() => {
-          frontContainer.classList.add('hidden')
-          frontContainer.classList.remove('print:block')
-          backContainer.classList.add('hidden')
-          backContainer.classList.remove('print:block')
-          console.log('重置所有容器状态')
-        }, 500)
-      }, 100)
-    }
+          document.body.removeAttribute('data-print')
+        }, 100)
+      })
+    })
   }
 
   // 打印反面
   const handlePrintBack = () => {
-    const frontContainer = document.getElementById('print-front')
-    const backContainer = document.getElementById('print-back')
+    // 设置打印模式为反面
+    document.body.setAttribute('data-print', 'back')
     
-    if (frontContainer && backContainer) {
-      console.log('打印反面 - 显示反面容器，隐藏正面容器')
-      
-      // 先重置所有容器状态
-      frontContainer.classList.add('hidden')
-      frontContainer.classList.remove('print:block')
-      backContainer.classList.add('hidden')
-      backContainer.classList.remove('print:block')
-      
-      // 显示反面容器，隐藏正面容器
-      backContainer.classList.remove('hidden')
-      backContainer.classList.add('print:block')
-      frontContainer.classList.add('hidden')
-      frontContainer.classList.remove('print:block')
-      
-      // 延迟一下再打印，确保DOM更新完成
-      setTimeout(() => {
-        console.log('开始打印反面...')
+    // 等待一帧，保证 DOM & 布局都稳定
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
         window.print()
-        
-        // 打印后重置所有容器状态
+        // 打印完成后清除属性
         setTimeout(() => {
-          frontContainer.classList.add('hidden')
-          frontContainer.classList.remove('print:block')
-          backContainer.classList.add('hidden')
-          backContainer.classList.remove('print:block')
-          console.log('重置所有容器状态')
-        }, 500)
-      }, 100)
-    }
+          document.body.removeAttribute('data-print')
+        }, 100)
+      })
+    })
   }
 
   // 新增：PDF导出功能
@@ -1188,21 +1129,11 @@ export default function WorkspacePage() {
       {/* 打印专用容器 - 正面 */}
       <div ref={printRef} className="print-container hidden print:block" id="print-front">
         {/* 正面卡片 */}
-        {Array.from({ length: Math.max(1, Math.ceil(totalCards / (COLS * ROWS))) }, (_, pageIndex) => (
-                      <div 
-              key={`print-page-${pageIndex}`}
-              className="print-page"
-              style={{
-                width: '210mm',
-                height: '297mm',
-                pageBreakAfter: pageIndex < Math.max(1, Math.ceil(totalCards / (COLS * ROWS))) - 1 ? 'always' : 'avoid',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center', // 改为垂直居中
-                padding: '0',
-                margin: '0',
-              }}
-            >
+        {Array.from({ length: totalPages }).map((_, pageIndex) => (
+          <div 
+            key={`front-page-${pageIndex}`}
+            className="print-page"
+          >
             <div 
               className="grid"
               style={{
@@ -1217,12 +1148,11 @@ export default function WorkspacePage() {
                 margin: '0 auto', // 确保水平居中
               }}
             >
-              {words
-                .filter((word) => word.word)
+              {wordsFiltered
                 .slice(pageIndex * COLS * ROWS, (pageIndex + 1) * COLS * ROWS)
                 .map((word, idx) => (
                   <CardPreview
-                    key={`print-front-${pageIndex}-${idx}`}
+                    key={`front-${pageIndex}-${idx}`}
                     data={word as WordCardData}
                     mode="print"
                     showImage={true}
@@ -1241,20 +1171,10 @@ export default function WorkspacePage() {
       {/* 打印专用容器 - 反面 */}
       <div className="print-container hidden print:block" id="print-back">
         {/* 反面卡片 */}
-        {Array.from({ length: Math.max(1, Math.ceil(totalCards / (COLS * ROWS))) }, (_, pageIndex) => (
+        {Array.from({ length: totalPages }).map((_, pageIndex) => (
           <div 
-            key={`print-page-back-${pageIndex}`}
+            key={`back-page-${pageIndex}`}
             className="print-page"
-            style={{
-              width: '210mm',
-              height: '297mm',
-              pageBreakAfter: pageIndex < Math.max(1, Math.ceil(totalCards / (COLS * ROWS))) - 1 ? 'always' : 'avoid',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center', // 改为垂直居中
-              padding: '0',
-              margin: '0',
-            }}
           >
             <div 
               className="grid"
@@ -1270,12 +1190,11 @@ export default function WorkspacePage() {
                 margin: '0 auto', // 确保水平居中
               }}
             >
-              {words
-                .filter((word) => word.word)
+              {wordsFiltered
                 .slice(pageIndex * COLS * ROWS, (pageIndex + 1) * COLS * ROWS)
                 .map((word, idx) => (
                   <CardPreview
-                    key={`print-back-${pageIndex}-${idx}`}
+                    key={`back-${pageIndex}-${idx}`}
                     data={word as WordCardData}
                     mode="print"
                     showImage={false}
