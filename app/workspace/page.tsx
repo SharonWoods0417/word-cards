@@ -372,11 +372,16 @@ export default function WorkspacePage() {
       // 临时设置只显示正面
       const printContainer = printRef.current
       const backPages = printContainer.querySelectorAll('.print-page-back')
+      const frontPages = printContainer.querySelectorAll('.print-page:not(.print-page-back)')
+      
+      // 隐藏反面页面
       backPages.forEach(page => (page as HTMLElement).style.display = 'none')
+      // 显示正面页面
+      frontPages.forEach(page => (page as HTMLElement).style.display = 'block')
       
       window.print()
       
-      // 打印后恢复显示
+      // 打印后恢复显示所有页面
       backPages.forEach(page => (page as HTMLElement).style.display = 'block')
     }
   }
@@ -386,12 +391,17 @@ export default function WorkspacePage() {
     if (printRef.current) {
       // 临时设置只显示反面
       const printContainer = printRef.current
+      const backPages = printContainer.querySelectorAll('.print-page-back')
       const frontPages = printContainer.querySelectorAll('.print-page:not(.print-page-back)')
+      
+      // 隐藏正面页面
       frontPages.forEach(page => (page as HTMLElement).style.display = 'none')
+      // 显示反面页面
+      backPages.forEach(page => (page as HTMLElement).style.display = 'block')
       
       window.print()
       
-      // 打印后恢复显示
+      // 打印后恢复显示所有页面
       frontPages.forEach(page => (page as HTMLElement).style.display = 'block')
     }
   }
@@ -1098,7 +1108,7 @@ export default function WorkspacePage() {
         {Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
           <div 
             key={`print-page-back-${pageIndex}`}
-            className="print-page"
+            className="print-page print-page-back"
             style={{
               width: '210mm',
               height: '297mm',
