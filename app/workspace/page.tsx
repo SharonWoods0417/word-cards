@@ -93,8 +93,7 @@ export default function WorkspacePage() {
   // 1. 只用 sampleWords 作为初始值，保证SSR和CSR一致
   const [words, setWords] = useState<Word[]>(sampleWords)
   const [previewMode, setPreviewMode] = useState<"front" | "back">("front")
-  const [cardSpacing, setCardSpacing] = useState([16])
-  const [cardMargin, setCardMargin] = useState([8])
+
   
   // 打印相关
   const printRef = useRef<HTMLDivElement>(null)
@@ -112,12 +111,7 @@ export default function WorkspacePage() {
   const [uploadMessage, setUploadMessage] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 新增：导出相关状态
-  const [exportSettings, setExportSettings] = useState({
-    cardsPerPage: 6, // 每页卡片数量
-    alignment: "double" as "double" | "single", // 对齐方式
-    paperSize: "a4" as "a4" | "letter" | "a3", // 纸张尺寸
-  })
+
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
   
@@ -370,9 +364,7 @@ export default function WorkspacePage() {
   }
 
   // 新增：导出设置更新函数
-  const handleExportSettingChange = (setting: keyof typeof exportSettings, value: any) => {
-    setExportSettings(prev => ({ ...prev, [setting]: value }))
-  }
+
 
   // 打印正面
   const handlePrintFront = () => {
@@ -592,8 +584,8 @@ export default function WorkspacePage() {
           }
         })
         
-        // 如果是双面对齐，创建反面页面
-        if (exportSettings.alignment === "double") {
+        // 创建反面页面
+        {
           const backPage = pdfDoc.addPage([pageWidth, pageHeight])
           
           // 绘制反面卡片
@@ -1003,121 +995,46 @@ export default function WorkspacePage() {
             <CardDescription>选择导出格式和打印设置</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
               {/* 导出选项 */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">导出选项</h3>
-                <div className="space-y-3">
-                  <Button 
-                    size="lg" 
-                    className="w-full flex items-center gap-2 bg-gray-900 hover:bg-gray-800"
-                    onClick={handleExportPDF}
-                    disabled={isExporting}
-                  >
-                    <FileText className="h-4 w-4" />
-                    {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '导出为 PDF'}
-                  </Button>
+              <div className="space-y-3">
+                <Button 
+                  size="lg" 
+                  className="w-full flex items-center gap-2 bg-gray-900 hover:bg-gray-800"
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                >
+                  <FileText className="h-4 w-4" />
+                  {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '导出为 PDF'}
+                </Button>
 
-                  <Button 
-                    size="lg" 
-                    className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                    onClick={handlePrint}
-                  >
-                    <Printer className="h-4 w-4" />
-                    浏览器打印
-                  </Button>
+                <Button 
+                  size="lg" 
+                  className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                  onClick={handlePrint}
+                >
+                  <Printer className="h-4 w-4" />
+                  浏览器打印
+                </Button>
 
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={handlePrintFront}
-                  >
-                    <Printer className="h-4 w-4" />
-                    打印正面
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="w-full flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
-                    onClick={handlePrintBack}
-                  >
-                    <Printer className="h-4 w-4" />
-                    打印反面
-                  </Button>
-                </div>
-              </div>
-
-              {/* 基础打印设置 */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">基础设置</h3>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>每页卡片数量</Label>
-                    <Select 
-                      value={exportSettings.cardsPerPage.toString()} 
-                      onValueChange={(value) => handleExportSettingChange('cardsPerPage', parseInt(value))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="4">4张/页</SelectItem>
-                        <SelectItem value="6">6张/页</SelectItem>
-                        <SelectItem value="8">8张/页</SelectItem>
-                        <SelectItem value="9">9张/页</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>对齐方式</Label>
-                    <Select 
-                      value={exportSettings.alignment}
-                      onValueChange={(value) => handleExportSettingChange('alignment', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="double">双面对齐</SelectItem>
-                        <SelectItem value="single">单面打印</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* 高级打印设置 */}
-              <div className="space-y-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  高级设置
-                </h3>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>卡片间距: {cardSpacing[0]}px</Label>
-                    <Slider
-                      value={cardSpacing}
-                      onValueChange={setCardSpacing}
-                      max={50}
-                      min={0}
-                      step={1}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>卡片边距: {cardMargin[0]}px</Label>
-                    <Slider
-                      value={cardMargin}
-                      onValueChange={setCardMargin}
-                      max={30}
-                      min={0}
-                      step={1}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={handlePrintFront}
+                >
+                  <Printer className="h-4 w-4" />
+                  打印正面
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg" 
+                  className="w-full flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handlePrintBack}
+                >
+                  <Printer className="h-4 w-4" />
+                  打印反面
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -1178,7 +1095,7 @@ export default function WorkspacePage() {
         ))}
         
         {/* 反面卡片 */}
-        {exportSettings.alignment === "double" && Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
+        {Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
           <div 
             key={`print-page-back-${pageIndex}`}
             className="print-page"
