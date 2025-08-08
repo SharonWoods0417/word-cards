@@ -1,4 +1,5 @@
 // API 工具函数 - 字段自动补全功能
+import { generatePhonicsSplit } from './phonics';
 
 // 环境变量类型定义
 interface ApiConfig {
@@ -151,6 +152,11 @@ ${fields.map(field => {
         data[field] = parsedData[field];
       }
     });
+
+    // 自动生成自然拼读拆分
+    if (word && !data.phonics) {
+      data.phonics = generatePhonicsSplit(word);
+    }
 
     return {
       success: true,

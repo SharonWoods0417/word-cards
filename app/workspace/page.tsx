@@ -34,6 +34,7 @@ import CardPreview, { WordCardData } from "@/components/CardPreview";
 import { pageConfig, mmToPt } from "@/config/cardConfig";
 import { CompletionButton } from "@/components/completion-button";
 import { BulkCompletionButton } from "@/components/bulk-completion-button";
+import { generatePhonicsSplit } from "@/lib/phonics";
 
 // 1. 定义单词卡片的数据类型（Word接口）
 interface Word {
@@ -229,9 +230,19 @@ export default function WorkspacePage() {
 
   // 6. 表格编辑：输入框双向绑定
   const handleInputChange = (id: number, field: keyof Word, value: string) => {
-    setWords(prevWords => prevWords.map(word =>
-      word.id === id ? { ...word, [field]: value } : word
-    ))
+    setWords(prevWords => prevWords.map(word => {
+      if (word.id === id) {
+        const updatedWord = { ...word, [field]: value };
+        
+        // 当单词字段更新时，自动生成自然拼读拆分
+        if (field === 'word' && value.trim() && !updatedWord.phonics) {
+          updatedWord.phonics = generatePhonicsSplit(value.trim());
+        }
+        
+        return updatedWord;
+      }
+      return word;
+    }))
   }
 
   // 7. 删除单词功能
@@ -304,16 +315,21 @@ export default function WorkspacePage() {
               return
             }
             // 数据转换与合并
-            const newWords: Word[] = (result.data as any[]).map(row => ({
-              id: Date.now() + Math.floor(Math.random() * 1000000), // 只在客户端事件中生成
-              word: row.word?.trim() || "",
-              phonetic: row.phonetic?.trim() || "",
-              phonics: row.phonics?.trim() || "",
-              chinese: row.chinese?.trim() || "",
-              example: row.example?.trim() || "",
-              translation: row.translation?.trim() || "",
-              imageUrl: row.imageUrl?.trim() || "",
-            }))
+            const newWords: Word[] = (result.data as any[]).map(row => {
+              const word = row.word?.trim() || "";
+              const phonics = row.phonics?.trim() || (word ? generatePhonicsSplit(word) : "");
+              
+              return {
+                id: Date.now() + Math.floor(Math.random() * 1000000), // 只在客户端事件中生成
+                word: word,
+                phonetic: row.phonetic?.trim() || "",
+                phonics: phonics,
+                chinese: row.chinese?.trim() || "",
+                example: row.example?.trim() || "",
+                translation: row.translation?.trim() || "",
+                imageUrl: row.imageUrl?.trim() || "",
+              };
+            })
             setWords(prevWords => [...prevWords, ...newWords])
             setUploadStatus("success")
             setUploadMessage(`成功导入${newWords.length}条单词数据！`)
