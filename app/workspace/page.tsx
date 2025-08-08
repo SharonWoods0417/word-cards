@@ -98,10 +98,34 @@ export default function WorkspacePage() {
   // 打印相关
   const printRef = useRef<HTMLDivElement>(null)
   
-  // 使用浏览器打印功能
-  const handlePrint = () => {
-    if (printRef.current) {
-      window.print()
+  // 全部打印功能 - 打印所有页面（正面和反面）
+  const handlePrintAll = () => {
+    const frontContainer = document.getElementById('print-front')
+    const backContainer = document.getElementById('print-back')
+    
+    if (frontContainer && backContainer) {
+      console.log('全部打印 - 显示所有容器')
+      
+      // 显示所有打印容器
+      frontContainer.classList.remove('hidden')
+      frontContainer.classList.add('print:block')
+      backContainer.classList.remove('hidden')
+      backContainer.classList.add('print:block')
+      
+      // 延迟一下再打印，确保DOM更新完成
+      setTimeout(() => {
+        console.log('开始全部打印...')
+        window.print()
+        
+        // 打印后隐藏所有容器
+        setTimeout(() => {
+          frontContainer.classList.add('hidden')
+          frontContainer.classList.remove('print:block')
+          backContainer.classList.add('hidden')
+          backContainer.classList.remove('print:block')
+          console.log('隐藏所有容器')
+        }, 500)
+      }, 100)
     }
   }
   
@@ -368,40 +392,74 @@ export default function WorkspacePage() {
 
   // 打印正面
   const handlePrintFront = () => {
-    if (printRef.current) {
-      // 临时设置只显示正面
-      const printContainer = printRef.current
-      const backPages = printContainer.querySelectorAll('.print-page-back')
+    const frontContainer = document.getElementById('print-front')
+    const backContainer = document.getElementById('print-back')
+    
+    if (frontContainer && backContainer) {
+      console.log('打印正面 - 显示正面容器，隐藏反面容器')
       
-      // 隐藏反面页面
-      backPages.forEach(page => (page as HTMLElement).style.display = 'none')
+      // 先重置所有容器状态
+      frontContainer.classList.add('hidden')
+      frontContainer.classList.remove('print:block')
+      backContainer.classList.add('hidden')
+      backContainer.classList.remove('print:block')
+      
+      // 显示正面容器，隐藏反面容器
+      frontContainer.classList.remove('hidden')
+      frontContainer.classList.add('print:block')
+      backContainer.classList.add('hidden')
+      backContainer.classList.remove('print:block')
       
       // 延迟一下再打印，确保DOM更新完成
       setTimeout(() => {
+        console.log('开始打印正面...')
         window.print()
         
-        // 打印后恢复显示所有页面
-        backPages.forEach(page => (page as HTMLElement).style.display = 'block')
+        // 打印后重置所有容器状态
+        setTimeout(() => {
+          frontContainer.classList.add('hidden')
+          frontContainer.classList.remove('print:block')
+          backContainer.classList.add('hidden')
+          backContainer.classList.remove('print:block')
+          console.log('重置所有容器状态')
+        }, 500)
       }, 100)
     }
   }
 
   // 打印反面
   const handlePrintBack = () => {
-    if (printRef.current) {
-      // 临时设置只显示反面
-      const printContainer = printRef.current
-      const frontPages = printContainer.querySelectorAll('.print-page:not(.print-page-back)')
+    const frontContainer = document.getElementById('print-front')
+    const backContainer = document.getElementById('print-back')
+    
+    if (frontContainer && backContainer) {
+      console.log('打印反面 - 显示反面容器，隐藏正面容器')
       
-      // 隐藏正面页面
-      frontPages.forEach(page => (page as HTMLElement).style.display = 'none')
+      // 先重置所有容器状态
+      frontContainer.classList.add('hidden')
+      frontContainer.classList.remove('print:block')
+      backContainer.classList.add('hidden')
+      backContainer.classList.remove('print:block')
+      
+      // 显示反面容器，隐藏正面容器
+      backContainer.classList.remove('hidden')
+      backContainer.classList.add('print:block')
+      frontContainer.classList.add('hidden')
+      frontContainer.classList.remove('print:block')
       
       // 延迟一下再打印，确保DOM更新完成
       setTimeout(() => {
+        console.log('开始打印反面...')
         window.print()
         
-        // 打印后恢复显示所有页面
-        frontPages.forEach(page => (page as HTMLElement).style.display = 'block')
+        // 打印后重置所有容器状态
+        setTimeout(() => {
+          frontContainer.classList.add('hidden')
+          frontContainer.classList.remove('print:block')
+          backContainer.classList.add('hidden')
+          backContainer.classList.remove('print:block')
+          console.log('重置所有容器状态')
+        }, 500)
       }, 100)
     }
   }
@@ -1021,10 +1079,10 @@ export default function WorkspacePage() {
                 <Button 
                   size="lg" 
                   className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                  onClick={handlePrint}
+                  onClick={handlePrintAll}
                 >
                   <Printer className="h-4 w-4" />
-                  浏览器打印
+                  全部打印
                 </Button>
 
                 <Button 
@@ -1053,8 +1111,8 @@ export default function WorkspacePage() {
 
       </div>
       
-      {/* 打印专用容器 */}
-      <div ref={printRef} className="print-container hidden print:block">
+      {/* 打印专用容器 - 正面 */}
+      <div ref={printRef} className="print-container hidden print:block" id="print-front">
         {/* 正面卡片 */}
         {Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
           <div 
@@ -1063,7 +1121,7 @@ export default function WorkspacePage() {
             style={{
               width: '210mm',
               height: '297mm',
-              pageBreakAfter: pageIndex < Math.ceil(words.length / (COLS * ROWS)) - 1 ? 'always' : 'auto',
+              pageBreakAfter: pageIndex < Math.ceil(words.length / (COLS * ROWS)) - 1 ? 'always' : 'avoid',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center', // 改为垂直居中
@@ -1103,16 +1161,19 @@ export default function WorkspacePage() {
             </div>
           </div>
         ))}
-        
+      </div>
+
+      {/* 打印专用容器 - 反面 */}
+      <div className="print-container hidden print:block" id="print-back">
         {/* 反面卡片 */}
         {Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
           <div 
             key={`print-page-back-${pageIndex}`}
-            className="print-page print-page-back"
+            className="print-page"
             style={{
               width: '210mm',
               height: '297mm',
-              pageBreakAfter: pageIndex < Math.ceil(words.length / (COLS * ROWS)) - 1 ? 'always' : 'auto',
+              pageBreakAfter: pageIndex < Math.ceil(words.length / (COLS * ROWS)) - 1 ? 'always' : 'avoid',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center', // 改为垂直居中

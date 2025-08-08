@@ -129,6 +129,15 @@
     margin: 0; 
   }
   
+  /* 防止空白页 */
+  .print-container:last-child {
+    page-break-after: avoid !important;
+  }
+  
+  .print-page:last-child {
+    page-break-after: avoid !important;
+  }
+  
   html, body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
