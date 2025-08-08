@@ -93,8 +93,9 @@ const sampleWords: Word[] = [
 ]
 
 export default function WorkspacePage() {
-  // 1. 只用 sampleWords 作为初始值，保证SSR和CSR一致
-  const [words, setWords] = useState<Word[]>(sampleWords)
+  // 1. 示例单词显示控制
+  const [showSampleWords, setShowSampleWords] = useState(false)
+  const [words, setWords] = useState<Word[]>([])
   const [previewMode, setPreviewMode] = useState<"front" | "back">("front")
 
   
@@ -186,7 +187,10 @@ export default function WorkspacePage() {
   // 计算分页数据
   const totalCards = words.filter((word) => word.word).length
   const totalPages = Math.max(1, Math.ceil(totalCards / cardsPerPage))
-  const pagedWords = words.filter((word) => word.word).slice(0, cardsPerPage)
+  const pagedWords = words.filter((word) => word.word).slice(
+    (previewPage - 1) * cardsPerPage, 
+    previewPage * cardsPerPage
+  )
 
   // 2. 组件挂载后（只在客户端），用useEffect加载localStorage数据
   useEffect(() => {
@@ -201,6 +205,16 @@ export default function WorkspacePage() {
       }
     }
   }, [])
+
+  // 3. 示例单词显示控制
+  useEffect(() => {
+    if (showSampleWords && words.length === 0) {
+      setWords(sampleWords)
+    } else if (!showSampleWords && words.length > 0 && words.every(word => sampleWords.some(sample => sample.id === word.id))) {
+      // 如果当前显示的是示例单词且用户关闭了示例显示，则清空
+      setWords([])
+    }
+  }, [showSampleWords, words.length])
 
   // 3. 每当words变化时，自动保存到localStorage
   useEffect(() => {
@@ -848,9 +862,90 @@ export default function WorkspacePage() {
           </Button>
         </div>
 
-        {/* ① 导入区（左右两栏） */}
+                {/* ① 导入区（左右两栏） */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* 左栏：CSV 上传模块 */}
+          {/* 左栏：手动添加单词 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                手动添加单词
+              </CardTitle>
+              <CardDescription>逐个添加单词数据</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* 示例单词控制 */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm text-gray-600">
+                  显示示例单词
+                </div>
+                <Button
+                  variant={showSampleWords ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowSampleWords(!showSampleWords)}
+                >
+                  {showSampleWords ? "隐藏示例" : "显示示例"}
+                </Button>
+              </div>
+
+              {/* 添加单词按钮和批量补全按钮 */}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleAddWord}
+                  className="flex-1"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  添加新单词
+                </Button>
+                <BulkCompletionButton
+                  words={words}
+                  onComplete={handleBulkComplete}
+                  size="sm"
+                  variant="outline"
+                />
+              </div>
+              
+              {/* 单词列表 */}
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {words.map((word) => (
+                  <div key={word.id} className="flex items-center gap-2 p-3 border rounded-lg">
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="单词"
+                        value={word.word}
+                        onChange={(e) => handleInputChange(word.id, 'word', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        placeholder="音标"
+                        value={word.phonetic}
+                        onChange={(e) => handleInputChange(word.id, 'phonetic', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-1">
+                      <CompletionButton
+                        word={word}
+                        onComplete={handleCompleteWord}
+                        size="sm"
+                        variant="ghost"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteWord(word.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 右栏：CSV 上传模块 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -939,73 +1034,6 @@ export default function WorkspacePage() {
                 <Download className="h-4 w-4 mr-2" />
                 下载CSV模板
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* 右栏：手动添加单词 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5" />
-                手动添加单词
-              </CardTitle>
-              <CardDescription>逐个添加单词数据</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* 添加单词按钮和批量补全按钮 */}
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleAddWord}
-                  className="flex-1"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  添加新单词
-                </Button>
-                <BulkCompletionButton
-                  words={words}
-                  onComplete={handleBulkComplete}
-                  size="sm"
-                  variant="outline"
-                />
-              </div>
-              
-                              {/* 单词列表 */}
-              <div className="space-y-3 max-h-60 overflow-y-auto">
-                {words.map((word) => (
-                  <div key={word.id} className="flex items-center gap-2 p-3 border rounded-lg">
-                    <div className="flex-1 grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="单词"
-                        value={word.word}
-                        onChange={(e) => handleInputChange(word.id, 'word', e.target.value)}
-                        className="text-sm"
-                      />
-                      <Input
-                        placeholder="音标"
-                        value={word.phonetic}
-                        onChange={(e) => handleInputChange(word.id, 'phonetic', e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="flex gap-1">
-                      <CompletionButton
-                        word={word}
-                        onComplete={handleCompleteWord}
-                        size="sm"
-                        variant="ghost"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteWord(word.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </CardContent>
           </Card>
         </div>
@@ -1160,21 +1188,21 @@ export default function WorkspacePage() {
       {/* 打印专用容器 - 正面 */}
       <div ref={printRef} className="print-container hidden print:block" id="print-front">
         {/* 正面卡片 */}
-        {Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
-          <div 
-            key={`print-page-${pageIndex}`}
-            className="print-page"
-            style={{
-              width: '210mm',
-              height: '297mm',
-              pageBreakAfter: pageIndex < Math.ceil(words.length / (COLS * ROWS)) - 1 ? 'always' : 'avoid',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center', // 改为垂直居中
-              padding: '0',
-              margin: '0',
-            }}
-          >
+        {Array.from({ length: Math.max(1, Math.ceil(totalCards / (COLS * ROWS))) }, (_, pageIndex) => (
+                      <div 
+              key={`print-page-${pageIndex}`}
+              className="print-page"
+              style={{
+                width: '210mm',
+                height: '297mm',
+                pageBreakAfter: pageIndex < Math.max(1, Math.ceil(totalCards / (COLS * ROWS))) - 1 ? 'always' : 'avoid',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center', // 改为垂直居中
+                padding: '0',
+                margin: '0',
+              }}
+            >
             <div 
               className="grid"
               style={{
@@ -1190,6 +1218,7 @@ export default function WorkspacePage() {
               }}
             >
               {words
+                .filter((word) => word.word)
                 .slice(pageIndex * COLS * ROWS, (pageIndex + 1) * COLS * ROWS)
                 .map((word, idx) => (
                   <CardPreview
@@ -1212,14 +1241,14 @@ export default function WorkspacePage() {
       {/* 打印专用容器 - 反面 */}
       <div className="print-container hidden print:block" id="print-back">
         {/* 反面卡片 */}
-        {Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
+        {Array.from({ length: Math.max(1, Math.ceil(totalCards / (COLS * ROWS))) }, (_, pageIndex) => (
           <div 
             key={`print-page-back-${pageIndex}`}
             className="print-page"
             style={{
               width: '210mm',
               height: '297mm',
-              pageBreakAfter: pageIndex < Math.ceil(words.length / (COLS * ROWS)) - 1 ? 'always' : 'avoid',
+              pageBreakAfter: pageIndex < Math.max(1, Math.ceil(totalCards / (COLS * ROWS))) - 1 ? 'always' : 'avoid',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center', // 改为垂直居中
@@ -1242,6 +1271,7 @@ export default function WorkspacePage() {
               }}
             >
               {words
+                .filter((word) => word.word)
                 .slice(pageIndex * COLS * ROWS, (pageIndex + 1) * COLS * ROWS)
                 .map((word, idx) => (
                   <CardPreview
