@@ -54,7 +54,7 @@ const sampleWords: Word[] = [
     chinese: "苹果",
     example: "I eat an apple every day.",
     translation: "我每天吃一个苹果。",
-    imageUrl: "",
+    imageUrl: "/red-apple.png",
   },
   {
     id: 2,
@@ -64,7 +64,7 @@ const sampleWords: Word[] = [
     chinese: "书",
     example: "She is reading a book.",
     translation: "她正在读一本书。",
-    imageUrl: "",
+    imageUrl: "/open-book.png",
   },
   {
     id: 3,
@@ -117,6 +117,41 @@ export default function WorkspacePage() {
   // 预览分页相关状态
   const [previewPage, setPreviewPage] = useState(1)
   const cardsPerPage = 6 // 每页6张卡片
+
+  // 调试功能：显示当前数据状态
+  const handleDebugData = () => {
+    console.log('当前words数据:', words)
+    console.log('示例数据:', sampleWords)
+    console.log('pagedWords:', pagedWords)
+    console.log('totalCards:', totalCards)
+    
+    // 检查localStorage数据
+    const saved = localStorage.getItem("words")
+    console.log('localStorage中的数据:', saved)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        console.log('localStorage解析后的数据:', parsed)
+        console.log('localStorage数据长度:', parsed.length)
+        if (parsed.length > 0) {
+          console.log('localStorage第一个单词:', parsed[0])
+        }
+      } catch (e) {
+        console.log('localStorage数据解析失败:', e)
+      }
+    }
+    
+    alert(`当前有 ${words.length} 个单词，其中 ${totalCards} 个有word字段\nlocalStorage中有数据: ${saved ? '是' : '否'}`)
+  }
+
+  // 清除localStorage数据，恢复示例数据
+  const handleClearData = () => {
+    if (confirm('确定要清除所有数据并恢复示例数据吗？这将删除localStorage中的所有单词数据。')) {
+      localStorage.removeItem("words")
+      setWords(sampleWords) // 恢复示例数据
+      alert('数据已清除，已恢复示例数据！')
+    }
+  }
 
   // 动态计算预览缩放比例 - 使用固定像素值
   const calculatePreviewScale = useCallback(() => {
@@ -492,21 +527,24 @@ export default function WorkspacePage() {
             color: rgb(1, 1, 1),
           })
           
+          // 上45%区域 - 图片区域（灰色背景）
+          const imageAreaHeight = cardHeight * 0.45;
+          frontPage.drawRectangle({
+            x: x + 2,
+            y: y + cardHeight - imageAreaHeight - 2,
+            width: cardWidth - 4,
+            height: imageAreaHeight,
+            color: rgb(0.95, 0.95, 0.95),
+          })
+          
           // 绘制图片占位符（如果有图片URL）
           if (word.imageUrl) {
             try {
               // 这里可以添加图片加载逻辑
               // 暂时绘制一个占位符
-              frontPage.drawRectangle({
-                x: x + 5,
-                y: y + cardHeight - 60,
-                width: cardWidth - 10,
-                height: 50,
-                color: rgb(0.95, 0.95, 0.95),
-              })
               safeDrawText(frontPage, '图片', {
                 x: x + cardWidth / 2 - 20,
-                y: y + cardHeight - 35,
+                y: y + cardHeight - imageAreaHeight / 2 - 10,
                 size: 12,
                 font,
                 color: rgb(0.5, 0.5, 0.5),
@@ -516,11 +554,19 @@ export default function WorkspacePage() {
             }
           }
           
+          // 下55%区域 - 主内容区域
+          const contentAreaHeight = cardHeight * 0.55;
+          const contentAreaY = y + cardHeight - imageAreaHeight - contentAreaHeight;
+          
+          // 中40%区域 - 单词+音标
+          const wordAreaHeight = contentAreaHeight * 0.727; // 40% / 55% = 72.7%
+          const wordAreaY = contentAreaY + contentAreaHeight - wordAreaHeight;
+          
           // 绘制单词
           safeDrawText(frontPage, word.word, {
-            x: x + 10,
-            y: y + cardHeight - 80,
-            size: 18,
+            x: x + cardWidth / 2 - 30,
+            y: wordAreaY + wordAreaHeight / 2 + 10,
+            size: 20,
             font: boldFont,
             color: rgb(0, 0, 0),
           })
@@ -528,20 +574,24 @@ export default function WorkspacePage() {
           // 绘制音标
           if (word.phonetic) {
             safeDrawText(frontPage, word.phonetic, {
-              x: x + 10,
-              y: y + cardHeight - 100,
-              size: 12,
+              x: x + cardWidth / 2 - 20,
+              y: wordAreaY + wordAreaHeight / 2 - 10,
+              size: 14,
               font,
               color: rgb(0.5, 0.5, 0.5),
             })
           }
           
+          // 下15%区域 - 拼读
+          const phonicsAreaHeight = contentAreaHeight * 0.273; // 15% / 55% = 27.3%
+          const phonicsAreaY = contentAreaY;
+          
           // 绘制自然拼读
           if (word.phonics) {
             safeDrawText(frontPage, word.phonics, {
-              x: x + 10,
-              y: y + 10,
-              size: 10,
+              x: x + cardWidth / 2 - 20,
+              y: phonicsAreaY + phonicsAreaHeight / 2 - 5,
+              size: 12,
               font,
               color: rgb(0.3, 0.3, 0.3),
             })
@@ -571,28 +621,30 @@ export default function WorkspacePage() {
               color: rgb(1, 1, 1),
             })
             
-            // 绘制中文释义（上40%区域，灰底背景）
+            // 上45%区域 - 中文释义（灰色背景）
+            const chineseAreaHeight = cardHeight * 0.45;
+            backPage.drawRectangle({
+              x: x + 2,
+              y: y + cardHeight - chineseAreaHeight - 2,
+              width: cardWidth - 4,
+              height: chineseAreaHeight,
+              color: rgb(0.95, 0.95, 0.95),
+            })
+            
+            // 绘制中文释义
             if (word.chinese) {
-              backPage.drawRectangle({
-                x: x + 5,
-                y: y + cardHeight - 60,
-                width: cardWidth - 10,
-                height: 50,
-                color: rgb(0.95, 0.95, 0.95),
-              })
-              
-              // 分行显示中文释义
-              const chineseLines = word.chinese.split('，')
-              chineseLines.forEach((line, lineIndex) => {
-                safeDrawText(backPage, line, {
-                  x: x + 10,
-                  y: y + cardHeight - 45 - lineIndex * 15,
-                  size: 12,
-                  font: boldFont,
-                  color: rgb(0, 0, 0),
-                })
+              safeDrawText(backPage, word.chinese, {
+                x: x + cardWidth / 2 - 20,
+                y: y + cardHeight - chineseAreaHeight / 2 - 10,
+                size: 16,
+                font: boldFont,
+                color: rgb(0, 0, 0),
               })
             }
+            
+            // 下55%区域 - 英文例句+中文翻译
+            const contentAreaHeight = cardHeight * 0.55;
+            const contentAreaY = y + cardHeight - chineseAreaHeight - contentAreaHeight;
             
             // 绘制英文例句
             if (word.example) {
@@ -608,9 +660,9 @@ export default function WorkspacePage() {
               
               exampleLines.forEach((line, lineIndex) => {
                 safeDrawText(backPage, line, {
-                  x: x + 10,
-                  y: y + 40 - lineIndex * 12,
-                  size: 10,
+                  x: x + cardWidth / 2 - 30,
+                  y: contentAreaY + contentAreaHeight - 40 - lineIndex * 15,
+                  size: 12,
                   font,
                   color: rgb(0, 0, 0),
                 })
@@ -620,9 +672,9 @@ export default function WorkspacePage() {
             // 绘制中文翻译
             if (word.translation) {
               safeDrawText(backPage, word.translation, {
-                x: x + 10,
-                y: y + 10,
-                size: 10,
+                x: x + cardWidth / 2 - 30,
+                y: contentAreaY + 20,
+                size: 12,
                 font,
                 color: rgb(0.5, 0.5, 0.5),
               })
@@ -700,6 +752,16 @@ export default function WorkspacePage() {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">单词卡片制作工具</h1>
           <p className="text-muted-foreground">上传单词 → 编辑内容 → 预览卡片 → 导出打印</p>
+        </div>
+
+        {/* 调试按钮 */}
+        <div className="flex justify-end mb-4">
+          <Button variant="outline" size="sm" onClick={handleDebugData}>
+            调试数据
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleClearData} className="ml-2">
+            清除数据
+          </Button>
         </div>
 
         {/* ① 导入区（左右两栏） */}
@@ -1028,9 +1090,9 @@ export default function WorkspacePage() {
                         showImage={true}
                         showPhonetic={true}
                         showPhonics={true}
-                        showChinese={true}
-                        showExample={true}
-                        showTranslation={true}
+                        showChinese={false}
+                        showExample={false}
+                        showTranslation={false}
                       />
                     ))}
                   </div>
@@ -1058,10 +1120,10 @@ export default function WorkspacePage() {
                       <CardPreview
                         key={`back-${word.id}`}
                         data={word as WordCardData}
-                        mode="preview"
-                        showImage={true}
-                        showPhonetic={true}
-                        showPhonics={true}
+                        mode="print"
+                        showImage={false}
+                        showPhonetic={false}
+                        showPhonics={false}
                         showChinese={true}
                         showExample={true}
                         showTranslation={true}
@@ -1309,12 +1371,12 @@ export default function WorkspacePage() {
                             key={`preview-print-front-${idx}`}
                             data={word as WordCardData}
                             mode="print"
-                            showImage
-                            showPhonetic
-                            showPhonics
-                            showChinese
-                            showExample
-                            showTranslation
+                            showImage={true}
+                            showPhonetic={true}
+                            showPhonics={true}
+                            showChinese={false}
+                            showExample={false}
+                            showTranslation={false}
                           />
                         ))}
                       </div>
@@ -1373,12 +1435,12 @@ export default function WorkspacePage() {
                             key={`preview-print-back-${idx}`}
                             data={word as WordCardData}
                             mode="print"
-                            showImage
-                            showPhonetic
-                            showPhonics
-                            showChinese
-                            showExample
-                            showTranslation
+                            showImage={false}
+                            showPhonetic={false}
+                            showPhonics={false}
+                            showChinese={true}
+                            showExample={true}
+                            showTranslation={true}
                           />
                         ))}
                       </div>
