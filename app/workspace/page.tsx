@@ -29,6 +29,7 @@ import {
 import { ChangeEvent } from "react"
 import Papa from 'papaparse'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+
 import CardPreview, { WordCardData } from "@/components/CardPreview";
 import { pageConfig, mmToPt } from "@/config/cardConfig";
 
@@ -95,6 +96,16 @@ export default function WorkspacePage() {
   const [cardSpacing, setCardSpacing] = useState([16])
   const [cardMargin, setCardMargin] = useState([8])
   
+  // 打印相关
+  const printRef = useRef<HTMLDivElement>(null)
+  
+  // 使用浏览器打印功能
+  const handlePrint = () => {
+    if (printRef.current) {
+      window.print()
+    }
+  }
+  
   // 新增：文件上传相关状态
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle")
@@ -110,13 +121,9 @@ export default function WorkspacePage() {
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
   
-  // 预览相关状态
-  const [showPrintPreview, setShowPrintPreview] = useState(false)
-  const [previewScale, setPreviewScale] = useState(0.5) // 动态缩放比例
-
-  // 预览分页相关状态
-  const [previewPage, setPreviewPage] = useState(1)
+  // 打印分页相关状态
   const cardsPerPage = 6 // 每页6张卡片
+  const [previewPage, setPreviewPage] = useState(1)
 
   // 调试功能：显示当前数据状态
   const handleDebugData = () => {
@@ -153,50 +160,12 @@ export default function WorkspacePage() {
     }
   }
 
-  // 动态计算预览缩放比例 - 使用固定像素值
-  const calculatePreviewScale = useCallback(() => {
-    if (typeof window === 'undefined') return 0.5
-    
-    // A4纸张固定像素尺寸（794 × 1123 px）
-    const a4Width = 794
-    const a4Height = 1123
-    
-    // 获取可用空间（减去modal边距和header）
-    const modalPadding = 16 // 减少padding，最大化可用空间
-    const headerHeight = 60 // header高度
-    const availableWidth = window.innerWidth - (modalPadding * 2) - 16
-    const availableHeight = window.innerHeight - headerHeight - (modalPadding * 2) - 16
-    
-    // 使用用户建议的公式计算缩放比例
-    const scaleRatio = Math.min(
-      availableWidth / (2 * a4Width), // 两张A4页面
-      availableHeight / a4Height
-    ) * 0.97 // 预留 3% 安全边距，确保完全落入容器内
-    
-    // 确保缩放比例在合理范围内
-    return Math.max(0.15, Math.min(0.9, scaleRatio))
-  }, [])
 
-  // 监听窗口大小变化，重新计算缩放比例
-  useEffect(() => {
-    const updateScale = () => {
-      setPreviewScale(calculatePreviewScale())
-    }
-    
-    updateScale()
-    window.addEventListener('resize', updateScale)
-    return () => window.removeEventListener('resize', updateScale)
-  }, [calculatePreviewScale])
-
-  // 监听words和previewMode变化，自动回到第一页
-  useEffect(() => {
-    setPreviewPage(1)
-  }, [words.length, previewMode])
 
   // 计算分页数据
   const totalCards = words.filter((word) => word.word).length
   const totalPages = Math.max(1, Math.ceil(totalCards / cardsPerPage))
-  const pagedWords = words.filter((word) => word.word).slice((previewPage - 1) * cardsPerPage, previewPage * cardsPerPage)
+  const pagedWords = words.filter((word) => word.word).slice(0, cardsPerPage)
 
   // 2. 组件挂载后（只在客户端），用useEffect加载localStorage数据
   useEffect(() => {
@@ -405,9 +374,34 @@ export default function WorkspacePage() {
     setExportSettings(prev => ({ ...prev, [setting]: value }))
   }
 
-  // 预览打印效果
-  const handlePreviewPrint = () => {
-    setShowPrintPreview(true)
+  // 打印正面
+  const handlePrintFront = () => {
+    if (printRef.current) {
+      // 临时设置只显示正面
+      const printContainer = printRef.current
+      const backPages = printContainer.querySelectorAll('.print-page-back')
+      backPages.forEach(page => (page as HTMLElement).style.display = 'none')
+      
+      window.print()
+      
+      // 打印后恢复显示
+      backPages.forEach(page => (page as HTMLElement).style.display = 'block')
+    }
+  }
+
+  // 打印反面
+  const handlePrintBack = () => {
+    if (printRef.current) {
+      // 临时设置只显示反面
+      const printContainer = printRef.current
+      const frontPages = printContainer.querySelectorAll('.print-page:not(.print-page-back)')
+      frontPages.forEach(page => (page as HTMLElement).style.display = 'none')
+      
+      window.print()
+      
+      // 打印后恢复显示
+      frontPages.forEach(page => (page as HTMLElement).style.display = 'block')
+    }
   }
 
   // 新增：PDF导出功能
@@ -747,7 +741,7 @@ export default function WorkspacePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto max-w-7xl p-6 space-y-8">
+      <div className="container mx-auto max-w-7xl p-6 space-y-8 no-print">
         {/* 页面标题 */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-900">单词卡片制作工具</h1>
@@ -815,265 +809,114 @@ export default function WorkspacePage() {
                     'text-blue-700 bg-blue-100'
                   }`}>
                     {uploadStatus === 'uploading' && (
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        {uploadMessage}
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        正在上传...
                       </div>
                     )}
-                    {uploadStatus !== 'uploading' && uploadMessage}
+                    {uploadStatus === 'success' && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                        上传成功！已导入 {words.length} 个单词
+                      </div>
+                    )}
+                    {uploadStatus === 'error' && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        </div>
+                        上传失败，请检查文件格式
+                      </div>
+                    )}
                   </div>
                 )}
                 
-                {/* 默认提示 */}
-                {uploadStatus === 'idle' && (
-                  <>
-                    <p className="font-medium text-gray-700 mb-2">点击上传或拖拽CSV文件</p>
-                    <p className="text-sm text-muted-foreground mb-2">支持的字段格式：</p>
-                    <div className="text-xs text-muted-foreground space-y-1 mb-3">
-                      <p>word, phonetic, phonics, chinese,</p>
-                      <p>example, translation, imageUrl</p>
-                    </div>
-                  </>
-                )}
-                
-                <div className="flex gap-2 justify-center">
-                  <Button 
-                    variant="outline" 
-                    onClick={e => handleUploadClick(e)}
-                    disabled={uploadStatus === 'uploading'}
-                  >
-                    {uploadStatus === 'uploading' ? '处理中...' : '选择文件'}
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="flex items-center gap-1 text-muted-foreground"
-                    onClick={e => { e.stopPropagation(); handleDownloadTemplate(); }}
-                  >
-                    <FileDown className="h-4 w-4" />
-                    下载模板
-                  </Button>
+                <div className="text-gray-600">
+                  <p className="font-medium mb-2">拖拽CSV文件到此处，或点击选择文件</p>
+                  <p className="text-sm text-gray-500">支持的文件格式：.csv</p>
                 </div>
               </div>
-
-              {/* CSV上传提示 */}
-              <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                💡 上传后将自动添加到下方表格，不会覆盖已有的手动添加项
-              </div>
+              
+              {/* 下载模板按钮 */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDownloadTemplate}
+                className="w-full"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                下载CSV模板
+              </Button>
             </CardContent>
           </Card>
 
-          {/* 右栏：手动添加单词模块 */}
+          {/* 右栏：手动添加单词 */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
                 手动添加单词
               </CardTitle>
-              <CardDescription>逐个添加新的单词条目</CardDescription>
+              <CardDescription>逐个添加单词数据</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col items-center justify-center h-40 space-y-4">
-              <div className="text-center space-y-3">
-                <div className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center mx-auto">
-                  <Plus className="h-6 w-6 text-white" />
-                </div>
-                <p className="text-muted-foreground text-sm">点击按钮添加新的空白单词行</p>
-                <div className="flex gap-2">
-                  <Button className="flex items-center gap-2" onClick={handleAddWord}>
-                    <Plus className="h-4 w-4" />
-                    添加单词
-                  </Button>
-                  <Button variant="outline" className="flex items-center gap-2 bg-transparent">
-                    <Copy className="h-4 w-4" />
-                    批量添加
-                  </Button>
-                </div>
+            <CardContent className="space-y-4">
+              {/* 添加单词按钮 */}
+              <Button 
+                onClick={handleAddWord}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                添加新单词
+              </Button>
+              
+              {/* 单词列表 */}
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {words.map((word) => (
+                  <div key={word.id} className="flex items-center gap-2 p-3 border rounded-lg">
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="单词"
+                        value={word.word}
+                        onChange={(e) => handleInputChange(word.id, 'word', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        placeholder="音标"
+                        value={word.phonetic}
+                        onChange={(e) => handleInputChange(word.id, 'phonetic', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteWord(word.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* ② 编辑区（表格形式） */}
+        {/* ② 卡片预览区 */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  单词编辑表格
-                </CardTitle>
-                <CardDescription>编辑每个单词的详细信息，空白字段将由系统自动补全</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" className="flex items-center gap-2 bg-transparent">
-                <Copy className="h-4 w-4" />
-                粘贴多行
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-96 w-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[120px]">单词</TableHead>
-                    <TableHead className="w-[120px]">音标</TableHead>
-                    <TableHead className="w-[120px]">拼读拆分</TableHead>
-                    <TableHead className="w-[100px]">中文释义</TableHead>
-                    <TableHead className="w-[200px]">英文例句</TableHead>
-                    <TableHead className="w-[200px]">例句翻译</TableHead>
-                    <TableHead className="w-[150px]">图片URL</TableHead>
-                    <TableHead className="w-[60px]">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {words.map((word, index) => (
-                    <TableRow key={word.id}>
-                      <TableCell>
-                        <Input
-                          value={word.word}
-                          onChange={e => handleInputChange(word.id, "word", e.target.value)}
-                          placeholder="输入单词"
-                          className={"min-w-0 " + (!word.word ? "border-red-500" : "")}
-                        />
-                        {!word.word && (
-                          <p className="text-xs text-red-500 mt-1">单词不能为空</p>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            value={word.phonetic}
-                            onChange={e => handleInputChange(word.id, "phonetic", e.target.value)}
-                            placeholder="/ˈwɜːrd/"
-                            className="min-w-0"
-                          />
-                          {!word.phonetic && (
-                            <Button variant="ghost" size="sm" className="p-1 h-6 w-6 text-muted-foreground">
-                              <Wand2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        {!word.phonetic && <p className="text-xs text-muted-foreground mt-1">系统补全</p>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            value={word.phonics}
-                            onChange={e => handleInputChange(word.id, "phonics", e.target.value)}
-                            placeholder="w-or-d"
-                            className="min-w-0"
-                          />
-                          {!word.phonics && (
-                            <Button variant="ghost" size="sm" className="p-1 h-6 w-6 text-muted-foreground">
-                              <Wand2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        {!word.phonics && <p className="text-xs text-muted-foreground mt-1">系统补全</p>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            value={word.chinese}
-                            onChange={e => handleInputChange(word.id, "chinese", e.target.value)}
-                            placeholder="中文意思"
-                            className="min-w-0"
-                          />
-                          {!word.chinese && (
-                            <Button variant="ghost" size="sm" className="p-1 h-6 w-6 text-muted-foreground">
-                              <Wand2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        {!word.chinese && <p className="text-xs text-muted-foreground mt-1">系统补全</p>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Textarea
-                            value={word.example}
-                            onChange={e => handleInputChange(word.id, "example", e.target.value)}
-                            placeholder="英文例句"
-                            className="min-w-0 resize-none min-h-[60px]"
-                          />
-                          {!word.example && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="p-1 h-6 w-6 self-start mt-1 text-muted-foreground"
-                            >
-                              <Wand2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        {!word.example && <p className="text-xs text-muted-foreground mt-1">系统补全</p>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Textarea
-                            value={word.translation}
-                            onChange={e => handleInputChange(word.id, "translation", e.target.value)}
-                            placeholder="例句翻译"
-                            className="min-w-0 resize-none min-h-[60px]"
-                          />
-                          {!word.translation && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="p-1 h-6 w-6 self-start mt-1 text-muted-foreground"
-                            >
-                              <Wand2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        {!word.translation && <p className="text-xs text-muted-foreground mt-1">系统补全</p>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Input
-                            value={word.imageUrl}
-                            onChange={e => handleInputChange(word.id, "imageUrl", e.target.value)}
-                            placeholder="图片链接"
-                            className="min-w-0"
-                          />
-                          {!word.imageUrl && (
-                            <Button variant="ghost" size="sm" className="p-1 h-6 w-6 text-muted-foreground">
-                              <Wand2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                        {!word.imageUrl && <p className="text-xs text-muted-foreground mt-1">系统生成</p>}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeleteWord(word.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* ③ 卡片预览区（严格按比例设计） */}
-        <Card id="card-preview">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
               卡片预览
             </CardTitle>
-            <CardDescription>预览打印效果，选择查看正面或反面</CardDescription>
+            <CardDescription>预览单词卡片的最终效果</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs value={previewMode} onValueChange={(value) => setPreviewMode(value as "front" | "back")}>
-              <div className="flex justify-center mb-6">
-                <TabsList className="grid w-full max-w-md grid-cols-2">
+              <div className="flex items-center justify-between mb-4">
+                <TabsList>
                   <TabsTrigger value="front">正面预览</TabsTrigger>
                   <TabsTrigger value="back">反面预览</TabsTrigger>
                 </TabsList>
@@ -1176,13 +1019,31 @@ export default function WorkspacePage() {
                   </Button>
 
                   <Button 
+                    size="lg" 
+                    className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                    onClick={handlePrint}
+                  >
+                    <Printer className="h-4 w-4" />
+                    浏览器打印
+                  </Button>
+
+                  <Button 
                     variant="outline" 
                     size="lg" 
-                    className="w-full flex items-center gap-2 bg-transparent"
-                    onClick={handlePreviewPrint}
+                    className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={handlePrintFront}
                   >
-                    <Eye className="h-4 w-4" />
-                    预览打印效果
+                    <Printer className="h-4 w-4" />
+                    打印正面
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="w-full flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                    onClick={handlePrintBack}
+                  >
+                    <Printer className="h-4 w-4" />
+                    打印反面
                   </Button>
                 </div>
               </div>
@@ -1239,221 +1100,132 @@ export default function WorkspacePage() {
                     <Slider
                       value={cardSpacing}
                       onValueChange={setCardSpacing}
-                      max={32}
-                      min={4}
-                      step={2}
+                      max={50}
+                      min={0}
+                      step={1}
                       className="w-full"
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label>页面边距: {cardMargin[0]}px</Label>
+                    <Label>卡片边距: {cardMargin[0]}px</Label>
                     <Slider
                       value={cardMargin}
                       onValueChange={setCardMargin}
-                      max={24}
-                      min={4}
-                      step={2}
+                      max={30}
+                      min={0}
+                      step={1}
                       className="w-full"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>纸张尺寸</Label>
-                    <Select 
-                      value={exportSettings.paperSize}
-                      onValueChange={(value) => handleExportSettingChange('paperSize', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="a4">A4 (210×297mm)</SelectItem>
-                        <SelectItem value="letter">Letter (216×279mm)</SelectItem>
-                        <SelectItem value="a3">A3 (297×420mm)</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
+
+
       </div>
-
-      {/* 打印预览弹窗 */}
-      {showPrintPreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-screen-2xl w-full h-full flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold">打印预览 - 第1页</h3>
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowPrintPreview(false)}
-                >
-                  关闭
-                </Button>
-                <Button 
-                  size="sm" 
-                  onClick={handleExportPDF} 
-                  disabled={isExporting}
-                >
-                  {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '开始导出'}
-                </Button>
-              </div>
+      
+      {/* 打印专用容器 */}
+      <div ref={printRef} className="print-container hidden print:block">
+        {/* 正面卡片 */}
+        {Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
+          <div 
+            key={`print-page-${pageIndex}`}
+            className="print-page"
+            style={{
+              width: '210mm',
+              height: '297mm',
+              pageBreakAfter: pageIndex < Math.ceil(words.length / (COLS * ROWS)) - 1 ? 'always' : 'auto',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center', // 改为垂直居中
+              padding: '0',
+              margin: '0',
+            }}
+          >
+            <div 
+              className="grid"
+              style={{
+                gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+                gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+                columnGap: `${COL_GAP_MM}mm`,
+                rowGap: `${ROW_GAP_MM}mm`,
+                padding: `${PADDING_TOP_MM}mm ${PADDING_MM}mm ${PADDING_BOTTOM_MM}mm ${PADDING_MM}mm`,
+                boxSizing: 'border-box',
+                width: `${gridWidth}mm`,
+                height: '100%',
+                margin: '0 auto', // 确保水平居中
+              }}
+            >
+              {words
+                .slice(pageIndex * COLS * ROWS, (pageIndex + 1) * COLS * ROWS)
+                .map((word, idx) => (
+                  <CardPreview
+                    key={`print-front-${pageIndex}-${idx}`}
+                    data={word as WordCardData}
+                    mode="print"
+                    showImage={true}
+                    showPhonetic={true}
+                    showPhonics={true}
+                    showChinese={false}
+                    showExample={false}
+                    showTranslation={false}
+                  />
+                ))}
             </div>
-            
-            {/* 打印预览A4纸区域上方，显示当前卡片宽高 */}
-            {/* 删除顶部中央的全局尺寸提示div */}
-
-            <div className="flex-grow flex items-center justify-center">
-              {/* 缩放比例显示 - 右上角 */}
-              <div className="absolute top-2 right-2 text-xs text-gray-500 bg-white px-2 py-1 rounded border z-10">
-                {Math.round(previewScale * 100)}%
-              </div>
-              
-              {/* 预览区域容器 - 使用固定像素尺寸 */}
-              <div className="flex items-center justify-center" style={{ 
-                gap: '16px',
-                transform: `scale(${previewScale})`,
-                transformOrigin: 'top center'
-              }}>
-                {/* 第一页正面预览 - A4纸竖向 */}
-                <div className="flex flex-col items-center">
-                  {/* A4纸标题及尺寸提示 */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 8 }}>
-                    <h4 className="text-sm font-medium text-gray-700 mr-3">
-                      第{previewPage}页 - 正面
-                    </h4>
-                    <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>
-                      卡片宽度：{desiredCardWidth}mm，高度：{CARD_HEIGHT}mm
-                    </span>
-                  </div>
-                  <div
-                    className="bg-white shadow-xl"
-                    style={{
-                      width: '210mm',
-                      height: '297mm',
-                      border: '2px dashed #ccc',
-                      position: 'relative',
-                      boxSizing: 'border-box',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${gridWidth}mm`,
-                        margin: '0 auto',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      <div
-                        className="grid"
-                        style={{
-                          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-                          gridTemplateRows: `repeat(${ROWS}, 1fr)`,
-                          columnGap: `${COL_GAP_MM}mm`,
-                          rowGap: `${ROW_GAP_MM}mm`,
-                          padding: `${PADDING_TOP_MM}mm ${PADDING_MM}mm ${PADDING_BOTTOM_MM}mm ${PADDING_MM}mm`,
-                          boxSizing: 'border-box',
-                          width: '100%',
-                          height: '100%',
-                        }}
-                      >
-                        {words.slice(0, COLS * ROWS).map((word, idx) => (
-                          <CardPreview
-                            key={`preview-print-front-${idx}`}
-                            data={word as WordCardData}
-                            mode="print"
-                            showImage={true}
-                            showPhonetic={true}
-                            showPhonics={true}
-                            showChinese={false}
-                            showExample={false}
-                            showTranslation={false}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 第一页反面预览 - A4纸竖向 */}
-                <div className="flex flex-col items-center">
-                  {/* A4纸标题及尺寸提示 */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginBottom: 8 }}>
-                    <h4 className="text-sm font-medium text-gray-700 mr-3">
-                      第{previewPage}页 - 反面
-                    </h4>
-                    <span style={{ color: '#888', fontSize: 13, marginLeft: 8 }}>
-                      卡片宽度：{desiredCardWidth}mm，高度：{CARD_HEIGHT}mm
-                    </span>
-                  </div>
-                  <div
-                    className="bg-white shadow-xl"
-                    style={{
-                      width: '210mm',
-                      height: '297mm',
-                      border: '2px dashed #ccc',
-                      position: 'relative',
-                      boxSizing: 'border-box',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${gridWidth}mm`,
-                        margin: '0 auto',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                      }}
-                    >
-                      <div
-                        className="grid"
-                        style={{
-                          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-                          gridTemplateRows: `repeat(${ROWS}, 1fr)`,
-                          columnGap: `${COL_GAP_MM}mm`,
-                          rowGap: `${ROW_GAP_MM}mm`,
-                          padding: `${PADDING_TOP_MM}mm ${PADDING_MM}mm ${PADDING_BOTTOM_MM}mm ${PADDING_MM}mm`,
-                          boxSizing: 'border-box',
-                          width: '100%',
-                          height: '100%',
-                        }}
-                      >
-                        {words.slice(0, COLS * ROWS).map((word, idx) => (
-                          <CardPreview
-                            key={`preview-print-back-${idx}`}
-                            data={word as WordCardData}
-                            mode="print"
-                            showImage={false}
-                            showPhonetic={false}
-                            showPhonics={false}
-                            showChinese={true}
-                            showExample={true}
-                            showTranslation={true}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-
           </div>
-        </div>
-      )}
+        ))}
+        
+        {/* 反面卡片 */}
+        {exportSettings.alignment === "double" && Array.from({ length: Math.ceil(words.length / (COLS * ROWS)) }, (_, pageIndex) => (
+          <div 
+            key={`print-page-back-${pageIndex}`}
+            className="print-page"
+            style={{
+              width: '210mm',
+              height: '297mm',
+              pageBreakAfter: pageIndex < Math.ceil(words.length / (COLS * ROWS)) - 1 ? 'always' : 'auto',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center', // 改为垂直居中
+              padding: '0',
+              margin: '0',
+            }}
+          >
+            <div 
+              className="grid"
+              style={{
+                gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+                gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+                columnGap: `${COL_GAP_MM}mm`,
+                rowGap: `${ROW_GAP_MM}mm`,
+                padding: `${PADDING_TOP_MM}mm ${PADDING_MM}mm ${PADDING_BOTTOM_MM}mm ${PADDING_MM}mm`,
+                boxSizing: 'border-box',
+                width: `${gridWidth}mm`,
+                height: '100%',
+                margin: '0 auto', // 确保水平居中
+              }}
+            >
+              {words
+                .slice(pageIndex * COLS * ROWS, (pageIndex + 1) * COLS * ROWS)
+                .map((word, idx) => (
+                  <CardPreview
+                    key={`print-back-${pageIndex}-${idx}`}
+                    data={word as WordCardData}
+                    mode="print"
+                    showImage={false}
+                    showPhonetic={false}
+                    showPhonics={false}
+                    showChinese={true}
+                    showExample={true}
+                    showTranslation={true}
+                  />
+                ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
