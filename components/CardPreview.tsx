@@ -7,6 +7,7 @@ export interface WordCardData {
   phonetic: string;
   phonics: string;
   chinese: string;
+  pos: string;
   example: string;
   translation: string;
   imageUrl: string;
@@ -19,6 +20,7 @@ export interface CardPreviewProps {
   showPhonetic?: boolean;
   showPhonics?: boolean;
   showChinese?: boolean;
+  showPos?: boolean;
   showExample?: boolean;
   showTranslation?: boolean;
   className?: string;
@@ -32,6 +34,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
   showPhonetic = true,
   showPhonics = true,
   showChinese = true,
+  showPos = true,
   showExample = true,
   showTranslation = true,
   className = "",
@@ -54,6 +57,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
   const fontPhonetic = fontBase + 2; // 增大音标字号
   const fontPhonics = fontBase; // 增大拼读字号
   const fontChinese = fontBase + 4; // 增大中文字号
+  const fontPos = fontBase - 2; // 词性字号
   const fontExample = fontBase + 2; // 增大例句字号
   const fontTranslation = fontBase; // 增大翻译字号
 
@@ -115,19 +119,45 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           </>
         )}
 
-        {/* 背面：中文含义 */}
+        {/* 背面：词性 + 中文含义 */}
         {mode === "print" && showChinese && data.chinese && (
           <div
             style={{
-              fontSize: fontChinese,
-              color: "#1a1a1a",
-              fontWeight: 600,
-              textAlign: "center",
-              lineHeight: 1.4,
-              fontFamily: "'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', 'SimHei', sans-serif",
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              padding: "0 20px",
+              gap: "8px",
             }}
           >
-            {data.chinese}
+            {/* 词性 */}
+            {showPos && data.pos && (
+              <span
+                style={{
+                  fontSize: fontPos,
+                  color: "#666",
+                  fontWeight: 500,
+                  fontFamily: "'Arial', 'Helvetica', sans-serif",
+                }}
+              >
+                {data.pos}
+              </span>
+            )}
+            
+            {/* 中文含义 */}
+            <span
+              style={{
+                fontSize: fontChinese,
+                color: "#1a1a1a",
+                fontWeight: 600,
+                lineHeight: 1.4,
+                fontFamily: "'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', 'SimHei', sans-serif",
+              }}
+            >
+              {data.chinese}
+            </span>
           </div>
         )}
       </div>
@@ -170,6 +200,20 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
                 >
                   {data.word}
                 </span>
+                {/* 词性 */}
+                {showPos && data.pos && (
+                  <span
+                    style={{
+                      fontSize: fontPos,
+                      color: "#666",
+                      fontWeight: 400,
+                      marginLeft: 8,
+                      fontFamily: "'Arial', 'Helvetica', sans-serif",
+                    }}
+                  >
+                    {data.pos}
+                  </span>
+                )}
               </div>
               
               {/* 音标 */}

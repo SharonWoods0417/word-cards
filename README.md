@@ -1,12 +1,15 @@
 # 单词卡片制作工具
 
-一个为孩子学习英语设计的单词卡片制作工具，支持批量导入、编辑、预览和导出打印功能。
+一个为孩子学习英语设计的单词卡片制作工具，支持批量导入、AI智能补全、数据审核、预览和导出打印功能。
 
 ## ✨ 功能特性
 
 - 📁 **CSV 批量导入** - 支持上传 CSV 文件批量导入单词数据
 - ➕ **手动添加** - 点击按钮添加新的单词条目
 - ✏️ **表格编辑** - 直观的表格界面编辑所有单词字段
+- 🤖 **AI智能补全** - 使用GPT-4o-mini自动生成音标、释义、例句、词性
+- 🖼️ **智能图片搜索** - 基于Pexels API自动获取相关图片
+- 🔄 **数据审核流程** - 三阶段工作流：输入→审核→确认生成
 - 👀 **实时预览** - 实时预览卡片的正反面效果
 - 🖨️ **打印预览** - 专业的A4纸打印预览，支持正反面布局
 - 📄 **PDF导出** - 支持导出为PDF格式，优化打印布局
@@ -38,6 +41,29 @@ export const pageConfig = {
 };
 ```
 
+## 🔄 三阶段工作流程
+
+### 阶段一：数据输入（Input）
+- **手动添加单词** - 点击"添加新单词"按钮逐个添加
+- **CSV批量导入** - 支持标准CSV格式文件上传
+- **示例单词控制** - 可选择显示/隐藏示例单词
+- **数据状态** - 原始输入数据存储在 `inputs` 状态中
+
+### 阶段二：数据审核（Review）
+- **AI字段补全** - 点击"生成全部字段"自动补全所有字段
+- **进度跟踪** - 实时显示生成进度和状态
+- **字段编辑** - 可修改所有自动生成的字段内容
+- **图片管理** - 支持重新生成图片，提供新旧图片对比选择
+- **数据验证** - 确保所有必要字段完整
+- **数据状态** - 审核数据存储在 `reviewWords` 状态中
+
+### 阶段三：确认生成（Preview/Print）
+- **数据确认** - 点击"确认生成卡片"进入预览阶段
+- **卡片预览** - 实时预览所有卡片的正反面效果
+- **打印布局** - A4纸张优化，2×3网格排列
+- **PDF导出** - 高质量PDF文件，支持双面打印
+- **数据状态** - 确认数据存储在 `confirmed` 状态中
+
 ## 🖨️ 打印预览功能
 
 ### 布局特性
@@ -50,7 +76,7 @@ export const pageConfig = {
 
 ### 预览模式
 - **正面预览** - 显示单词、音标、拼读、图片
-- **反面预览** - 显示中文释义、例句、翻译
+- **反面预览** - 显示词性、中文释义、例句、翻译
 - **实时缩放** - 支持动态缩放比例，适配不同屏幕
 - **尺寸提示** - 在页面标题旁显示当前卡片尺寸
 - **调试模式** - 可切换显示详细的布局参数
@@ -68,15 +94,37 @@ export const pageConfig = {
 - **网格布局** - 2列3行，每页6张卡片
 - **间距控制** - 左右10mm，上下6mm间距
 
+## 🤖 AI智能补全功能
+
+### OpenRouter API集成
+- **补全字段**：音标(phonetic)、中文释义(chinese)、例句(example)、翻译(translation)、词性(pos)
+- **模型**：GPT-4o-mini，专业英语教学助手
+- **提示词优化**：针对儿童学习场景的专业提示词
+- **批量处理**：支持单个和批量补全，提升效率
+
+### Pexels API集成
+- **图片搜索**：基于单词语义搜索相关图片
+- **图片质量**：优先选择高质量、相关度高的图片
+- **重新生成**：支持不满意时重新生成新图片
+- **图片选择**：提供新旧图片对比，用户可自由选择
+
+### 用户体验优化
+- **进度显示** - 实时显示补全进度和状态
+- **错误处理** - 完善的错误提示和重试机制
+- **状态管理** - 智能状态管理，避免重复请求
+- **数据持久化** - 补全结果自动保存到本地存储
+
 ## 🛠️ 技术栈
 
 - **框架**: Next.js 15.2.4 (App Router)
-- **语言**: TypeScript
+- **语言**: TypeScript 5
 - **样式**: Tailwind CSS 4.1.9
-- **UI 组件**: shadcn/ui
-- **状态管理**: React Hooks
+- **UI 组件**: shadcn/ui (基于Radix UI)
+- **状态管理**: React Hooks (useState, useEffect, useCallback, useRef)
 - **数据存储**: localStorage
 - **PDF生成**: pdf-lib
+- **CSV解析**: papaparse
+- **AI服务**: OpenRouter API (GPT-4o-mini), Pexels API
 
 ## 🚀 快速开始
 
@@ -91,6 +139,18 @@ export const pageConfig = {
 npm install
 # 或
 pnpm install
+```
+
+### 环境配置
+
+创建 `.env.local` 文件并配置API密钥：
+
+```bash
+# OpenRouter API密钥（用于文本字段补全）
+NEXT_PUBLIC_OPENROUTER_API_KEY=your_openrouter_api_key
+
+# Pexels API密钥（用于图片搜索）
+NEXT_PUBLIC_PEXELS_API_KEY=your_pexels_api_key
 ```
 
 ### 启动开发服务器
@@ -109,29 +169,33 @@ pnpm dev
 
 每个单词卡片包含以下字段：
 
-| 字段名 | 用途 | 展示面 |
-|--------|------|--------|
-| word | 单词本身 | 正面 |
-| phonetic | 音标 | 正面 |
-| phonics | 拼读拆分 | 正面 |
-| imageUrl | 相关图片 | 正面 |
-| chinese | 中文释义 | 反面 |
-| example | 英文例句 | 反面 |
-| translation | 例句翻译 | 反面 |
+| 字段名 | 用途 | 展示面 | 补全来源 |
+|--------|------|--------|----------|
+| word | 单词本身 | 正面 | 用户输入 |
+| phonetic | 音标 | 正面 | OpenRouter API |
+| phonics | 拼读拆分 | 正面 | 用户输入 |
+| pos | 词性 | 正面 | OpenRouter API |
+| imageUrl | 相关图片 | 正面 | Pexels API |
+| chinese | 中文释义 | 反面 | OpenRouter API |
+| example | 英文例句 | 反面 | OpenRouter API |
+| translation | 例句翻译 | 反面 | OpenRouter API |
 
-### 打印预览使用
+### 工作流程使用
 
-1. **进入预览模式** - 点击"预览打印效果"按钮
-2. **查看布局** - 检查A4纸上的卡片排列效果
-3. **调整缩放** - 使用缩放控制查看细节
-4. **导出PDF** - 点击"开始导出"生成PDF文件
+1. **添加单词** - 手动输入或上传CSV文件
+2. **生成字段** - 点击"生成全部字段"自动补全所有字段
+3. **审核修改** - 在审核界面检查和修改所有字段内容
+4. **图片管理** - 不满意时可重新生成图片并选择
+5. **确认生成** - 点击"确认生成卡片"进入预览阶段
+6. **预览打印** - 查看最终效果并导出PDF
 
 ### CSV 导入格式
 
 支持的 CSV 格式：
 ```csv
-word,phonetic,phonics,chinese,example,translation,imageUrl
-apple,/ˈæpəl/,ap-ple,苹果,I eat an apple every day.,我每天吃一个苹果。,
+word,phonetic,phonics,chinese,pos,example,translation,imageUrl
+apple,/ˈæpəl/,ap-ple,苹果,n.,I eat an apple every day.,我每天吃一个苹果。,
+book,/bʊk/,b-ook,书,n.,She is reading a book.,她正在读一本书。,
 ```
 
 ## 📁 项目结构
@@ -143,19 +207,25 @@ word-cards-workspace/
 │   ├── layout.tsx         # 根布局
 │   └── globals.css        # 全局样式
 ├── components/            # UI 组件
-│   ├── ui/               # shadcn/ui 基础组件（精简版）
+│   ├── ui/               # shadcn/ui 基础组件
 │   ├── CardPreview.tsx   # 统一卡片预览组件
 │   ├── completion-button.tsx      # 单个补全按钮
-│   └── bulk-completion-button.tsx # 批量补全按钮
+│   ├── bulk-completion-button.tsx # 批量补全按钮
+│   ├── data-review-dialog.tsx     # 数据审核对话框
+│   └── image-selection-dialog.tsx # 图片选择对话框
 ├── config/               # 配置文件
 │   └── cardConfig.ts     # 卡片尺寸和布局配置
 ├── hooks/                 # React Hooks
 │   └── use-completion.ts  # 补全功能 Hook
 ├── lib/                   # 工具函数
-│   └── api.ts            # API 调用工具
+│   ├── api.ts            # API 调用工具
+│   ├── utils.ts          # 通用工具函数
+│   └── phonics.ts        # 自然拼读拆分工具
 ├── docs/                  # 项目文档
-│   ├── MVP_TASKS.md      # MVP 任务清单
-│   └── API_SETUP.md      # API 配置说明
+│   ├── README.md         # 详细项目文档
+│   ├── API_SETUP.md      # API 配置说明
+│   ├── CHANGELOG.md      # 更新日志
+│   └── EXPORT_GUIDE.md   # 导出功能指南
 ├── public/                # 静态资源
 └── styles/                # 样式文件
 ```
@@ -167,6 +237,7 @@ word-cards-workspace/
 - **统一尺寸** - 使用 config/cardConfig.ts 统一配置
 - **内容控制** - 可选择性显示图片、音标、例句等
 - **打印优化** - 针对A4打印优化的样式和布局
+- **词性显示** - 在中文释义前显示词性字段
 
 ### 使用示例
 ```tsx
@@ -176,6 +247,7 @@ word-cards-workspace/
   showImage={true}
   showPhonetic={true}
   showChinese={true}
+  showPos={true}
 />
 ```
 
@@ -211,23 +283,23 @@ export const pageConfig = {
 
 为了使用字段自动补全功能，需要配置以下 API 密钥：
 
-1. **OpenRouter API** - 用于补全文本字段（音标、释义、例句、翻译）
+1. **OpenRouter API** - 用于补全文本字段（音标、释义、例句、翻译、词性）
 2. **Pexels API** - 用于搜索相关图片
 
 详细配置说明请查看 [API 配置文档](./docs/API_SETUP.md)
 
 ## 📋 开发计划
 
-### 🎯 MVP 版本（当前开发中）
+### 🎯 MVP 版本（已完成）
 
 专注于五个核心功能环节：
-- 📁 **上传** - CSV文件批量导入
-- ✏️ **编辑** - 表格编辑单词数据  
-- 👀 **预览** - 实时预览卡片效果
-- 🖨️ **导出** - PDF导出功能
-- 🤖 **补全** - AI自动补全缺失字段
-
-详细的MVP任务清单请查看 [docs/MVP_TASKS.md](./docs/MVP_TASKS.md)
+- ✅ **上传** - CSV文件批量导入
+- ✅ **编辑** - 表格编辑单词数据  
+- ✅ **预览** - 实时预览卡片效果
+- ✅ **导出** - PDF导出功能
+- ✅ **补全** - AI自动补全缺失字段
+- ✅ **审核流程** - 三阶段数据审核工作流
+- ✅ **图片管理** - 智能图片搜索和重新生成
 
 ### 当前状态
 
@@ -237,9 +309,19 @@ export const pageConfig = {
 - ✅ 打印预览功能完成
 - ✅ 统一卡片尺寸配置完成
 - ✅ PDF导出功能完成
-- 🔄 MVP功能逻辑开发中...
+- ✅ MVP功能逻辑完成
+- ✅ AI智能补全功能完成
+- ✅ 数据审核流程完成
+- ✅ 图片管理功能完成
 
-## 🤝 贡献指南
+### 下一步计划
+
+- 🔄 性能优化和用户体验改进
+- 🔄 更多导出格式支持
+- 🔄 高级编辑功能
+- 🔄 数据导入导出增强
+
+## 🎯 贡献指南
 
 1. Fork 项目
 2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
@@ -258,7 +340,9 @@ export const pageConfig = {
 - [shadcn/ui](https://ui.shadcn.com/) - UI 组件库
 - [v0](https://v0.dev/) - AI 驱动的 UI 生成工具
 - [pdf-lib](https://pdf-lib.js.org/) - PDF 生成库
+- [OpenRouter](https://openrouter.ai/) - AI API 服务
+- [Pexels](https://www.pexels.com/) - 高质量图片资源
 
 ---
 
-**注意**: 这是一个前端项目，所有数据保存在浏览器本地存储中，无需后端服务器。 
+**注意**: 这是一个前端项目，所有数据保存在浏览器本地存储中，无需后端服务器。AI功能需要配置相应的API密钥。 

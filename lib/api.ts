@@ -8,7 +8,7 @@ interface ApiConfig {
 }
 
 // 补全字段类型
-export type CompletionField = 'phonetic' | 'chinese' | 'example' | 'translation' | 'imageUrl';
+export type CompletionField = 'phonetic' | 'chinese' | 'example' | 'translation' | 'pos' | 'imageUrl';
 
 // 补全请求参数
 export interface CompletionRequest {
@@ -16,7 +16,7 @@ export interface CompletionRequest {
   fields: CompletionField[];
 }
 
-// 补全响应结果
+// 补全响应类型
 export interface CompletionResponse {
   success: boolean;
   data?: {
@@ -24,6 +24,7 @@ export interface CompletionResponse {
     chinese?: string;
     example?: string;
     translation?: string;
+    pos?: string;
     imageUrl?: string;
   };
   error?: string;
@@ -63,7 +64,7 @@ export function checkApiConfig(): { openRouter: boolean; pexels: boolean } {
  */
 export async function completeTextFields(
   word: string,
-  fields: ('phonetic' | 'chinese' | 'example' | 'translation')[]
+  fields: ('phonetic' | 'chinese' | 'example' | 'translation' | 'pos')[]
 ): Promise<CompletionResponse> {
   try {
     const config = getApiConfig();
@@ -86,6 +87,8 @@ ${fields.map(field => {
       return '- example: 英文例句，简单易懂，适合儿童';
     case 'translation':
       return '- translation: 例句的中文翻译';
+    case 'pos':
+      return '- pos: 词性，使用标准缩写（n.名词, v.动词, adj.形容词, adv.副词, prep.介词, conj.连词, pron.代词, int.感叹词）';
     default:
       return '';
   }
@@ -96,7 +99,8 @@ ${fields.map(field => {
   "phonetic": "音标",
   "chinese": "中文释义", 
   "example": "英文例句",
-  "translation": "中文翻译"
+  "translation": "中文翻译",
+  "pos": "词性"
 }`;
 
     // 调用 OpenRouter API
@@ -237,14 +241,15 @@ export async function completeAllFields(word: any): Promise<CompletionResponse> 
     if (!word.chinese) missingFields.push('chinese');
     if (!word.example) missingFields.push('example');
     if (!word.translation) missingFields.push('translation');
+    if (!word.pos) missingFields.push('pos');
     
     // 检查缺失的图片字段
     const needsImage = !word.imageUrl;
     
     // 补全文本字段
     const textFields = missingFields.filter(field => 
-      ['phonetic', 'chinese', 'example', 'translation'].includes(field)
-    ) as ('phonetic' | 'chinese' | 'example' | 'translation')[];
+      ['phonetic', 'chinese', 'example', 'translation', 'pos'].includes(field)
+    ) as ('phonetic' | 'chinese' | 'example' | 'translation' | 'pos')[];
     
     const textResult = textFields.length > 0 
       ? await completeTextFields(word.word, textFields)

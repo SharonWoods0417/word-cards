@@ -57,7 +57,7 @@ export function BulkCompletionButton({
 
   // 检查是否有需要补全的单词
   const needsCompletion = words.some(word => 
-    !word.phonetic || !word.chinese || !word.example || !word.translation || !word.imageUrl
+    !word.phonetic || !word.chinese || !word.example || !word.translation || !word.pos || !word.imageUrl
   );
 
   return (

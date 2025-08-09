@@ -34,7 +34,9 @@ import CardPreview, { WordCardData } from "@/components/CardPreview";
 import { pageConfig, mmToPt } from "@/config/cardConfig";
 import { CompletionButton } from "@/components/completion-button";
 import { BulkCompletionButton } from "@/components/bulk-completion-button";
+import { DataReviewDialog } from "@/components/data-review-dialog";
 import { generatePhonicsSplit } from "@/lib/phonics";
+import { searchImage } from "@/lib/api";
 
 // 1. 定义单词卡片的数据类型（Word接口）
 interface Word {
@@ -43,6 +45,7 @@ interface Word {
   phonetic: string; // 音标
   phonics: string; // 拼读拆分
   chinese: string; // 中文释义
+  pos: string; // 词性
   example: string; // 英文例句
   translation: string; // 例句翻译
   imageUrl: string; // 图片链接
@@ -56,6 +59,7 @@ const sampleWords: Word[] = [
     phonetic: "/ˈæpəl/",
     phonics: "ap-ple",
     chinese: "苹果",
+    pos: "n.",
     example: "I eat an apple every day.",
     translation: "我每天吃一个苹果。",
     imageUrl: "/red-apple.png",
@@ -66,6 +70,7 @@ const sampleWords: Word[] = [
     phonetic: "/bʊk/",
     phonics: "b-ook",
     chinese: "书",
+    pos: "n.",
     example: "She is reading a book.",
     translation: "她正在读一本书。",
     imageUrl: "/open-book.png",
@@ -76,6 +81,7 @@ const sampleWords: Word[] = [
     phonetic: "/kæt/",
     phonics: "c-at",
     chinese: "猫",
+    pos: "n.",
     example: "The cat is sleeping on the sofa.",
     translation: "猫正在沙发上睡觉。",
     imageUrl: "",
@@ -86,6 +92,7 @@ const sampleWords: Word[] = [
     phonetic: "/dɔːɡ/",
     phonics: "d-og",
     chinese: "狗",
+    pos: "n.",
     example: "My dog likes to play in the park.",
     translation: "我的狗喜欢在公园里玩耍。",
     imageUrl: "",
@@ -93,10 +100,23 @@ const sampleWords: Word[] = [
 ]
 
 export default function WorkspacePage() {
-  // 1. 示例单词显示控制
-  const [showSampleWords, setShowSampleWords] = useState(false)
+  // 1. 阶段控制状态
+  const [currentStage, setCurrentStage] = useState<'input' | 'review' | 'preview'>('input')
+  
+  // 2. 数据状态管理（三阶段数据）
+  const [inputs, setInputs] = useState<Word[]>([]) // 原始输入
+  const [drafts, setDrafts] = useState<Word[]>([]) // 待审核
+  const [confirmed, setConfirmed] = useState<Word[]>([]) // 已确认
+  
+  // 3. 向后兼容：保持现有的words状态用于打印功能
   const [words, setWords] = useState<Word[]>([])
+  
+  // 4. 示例单词显示控制
+  const [showSampleWords, setShowSampleWords] = useState(false)
   const [previewMode, setPreviewMode] = useState<"front" | "back">("front")
+  
+  // 5. 弹窗状态
+  const [showReviewDialog, setShowReviewDialog] = useState(false)
 
   
   // 打印相关
@@ -156,8 +176,20 @@ export default function WorkspacePage() {
   // 清除localStorage数据，恢复示例数据
   const handleClearData = () => {
     if (confirm('确定要清除所有数据并恢复示例数据吗？这将删除localStorage中的所有单词数据。')) {
+      // 清除所有阶段的数据
       localStorage.removeItem("words")
-      setWords(sampleWords) // 恢复示例数据
+      localStorage.removeItem("inputs")
+      localStorage.removeItem("drafts")
+      localStorage.removeItem("confirmed")
+      localStorage.removeItem("currentStage")
+      
+      // 重置所有状态
+      setInputs(sampleWords)
+      setDrafts([])
+      setConfirmed([])
+      setCurrentStage('input')
+      setWords(sampleWords) // 保持向后兼容
+      
       alert('数据已清除，已恢复示例数据！')
     }
   }
@@ -176,10 +208,54 @@ export default function WorkspacePage() {
   // 2. 组件挂载后（只在客户端），用useEffect加载localStorage数据
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("words")
-      if (saved) {
+      // 加载新的三阶段数据
+      const savedInputs = localStorage.getItem("inputs")
+      const savedDrafts = localStorage.getItem("drafts")
+      const savedConfirmed = localStorage.getItem("confirmed")
+      const savedStage = localStorage.getItem("currentStage")
+      
+      // 向后兼容：如果存在旧的words数据，迁移到inputs
+      const savedWords = localStorage.getItem("words")
+      
+      if (savedInputs) {
         try {
-          setWords(JSON.parse(saved) as Word[])
+          setInputs(JSON.parse(savedInputs) as Word[])
+        } catch {
+          // 解析失败则不处理
+        }
+      }
+      
+      if (savedDrafts) {
+        try {
+          setDrafts(JSON.parse(savedDrafts) as Word[])
+        } catch {
+          // 解析失败则不处理
+        }
+      }
+      
+      if (savedConfirmed) {
+        try {
+          setConfirmed(JSON.parse(savedConfirmed) as Word[])
+        } catch {
+          // 解析失败则不处理
+        }
+      }
+      
+      if (savedStage) {
+        try {
+          setCurrentStage(JSON.parse(savedStage) as 'input' | 'review' | 'preview')
+        } catch {
+          // 解析失败则默认为input
+          setCurrentStage('input')
+        }
+      }
+      
+      // 向后兼容：迁移旧数据
+      if (savedWords && !savedInputs) {
+        try {
+          const oldWords = JSON.parse(savedWords) as Word[]
+          setInputs(oldWords)
+          setWords(oldWords) // 保持向后兼容
         } catch {
           // 解析失败则不处理
         }
@@ -189,20 +265,175 @@ export default function WorkspacePage() {
 
   // 3. 示例单词显示控制
   useEffect(() => {
-    if (showSampleWords && words.length === 0) {
-      setWords(sampleWords)
-    } else if (!showSampleWords && words.length > 0 && words.every(word => sampleWords.some(sample => sample.id === word.id))) {
+    if (showSampleWords && inputs.length === 0) {
+      setInputs(sampleWords)
+      setWords(sampleWords) // 保持向后兼容
+    } else if (!showSampleWords && inputs.length > 0 && inputs.every(word => sampleWords.some(sample => sample.id === word.id))) {
       // 如果当前显示的是示例单词且用户关闭了示例显示，则清空
-      setWords([])
+      setInputs([])
+      setWords([]) // 保持向后兼容
     }
-  }, [showSampleWords, words.length])
+  }, [showSampleWords, inputs.length])
 
-  // 3. 每当words变化时，自动保存到localStorage
+  // 4. 保存三阶段数据到localStorage
   useEffect(() => {
-    localStorage.setItem("words", JSON.stringify(words))
-  }, [words])
+    localStorage.setItem("inputs", JSON.stringify(inputs))
+  }, [inputs])
+  
+  useEffect(() => {
+    localStorage.setItem("drafts", JSON.stringify(drafts))
+  }, [drafts])
+  
+  useEffect(() => {
+    localStorage.setItem("confirmed", JSON.stringify(confirmed))
+  }, [confirmed])
+  
+  useEffect(() => {
+    localStorage.setItem("currentStage", JSON.stringify(currentStage))
+  }, [currentStage])
+  
+  // 5. 向后兼容：保持words状态同步（用于打印功能）
+  useEffect(() => {
+    // 根据当前阶段，同步words状态
+    if (currentStage === 'input') {
+      setWords(inputs)
+    } else if (currentStage === 'review') {
+      setWords(drafts)
+    } else if (currentStage === 'preview') {
+      setWords(confirmed)
+    }
+  }, [currentStage, inputs, drafts, confirmed])
 
-  // 5. 手动添加单词的处理函数
+  // 5. 状态转换函数
+  const handleStageTransition = (newStage: 'input' | 'review' | 'preview') => {
+    setCurrentStage(newStage)
+  }
+  
+  const handleGenerateAllFields = async () => {
+    // 从inputs生成drafts，调用API补全所有字段
+    const wordsToProcess = inputs.filter(word => word.word.trim())
+    if (wordsToProcess.length === 0) {
+      alert('请先添加一些单词数据')
+      return
+    }
+
+    setDrafts(wordsToProcess)
+    setCurrentStage('review')
+    
+    // TODO: 这里可以添加API调用来补全字段
+    // 目前先直接使用inputs作为drafts
+  }
+  
+  const handleConfirmDrafts = () => {
+    // 从drafts确认到confirmed
+    setConfirmed(drafts)
+    setCurrentStage('preview')
+  }
+  
+  const handleBackToReview = () => {
+    // 从preview回到review
+    setCurrentStage('review')
+  }
+  
+  const handleBackToInput = () => {
+    // 从review回到input
+    setCurrentStage('input')
+  }
+
+  // 弹窗相关处理函数
+  const handleOpenReviewDialog = () => {
+    // 优先使用已确认的数据，如果没有则使用inputs
+    const wordsToReview = (confirmed.length > 0 ? confirmed : inputs).filter(word => word.word.trim())
+    if (wordsToReview.length === 0) {
+      alert('请先添加一些单词数据')
+      return
+    }
+    setShowReviewDialog(true)
+  }
+
+  const handleConfirmReview = (confirmedWords: Word[]) => {
+    setConfirmed(confirmedWords)
+    setWords(confirmedWords) // 更新words状态用于打印
+    setShowReviewDialog(false)
+    // 直接关闭弹窗，回到首页卡片预览区域
+  }
+
+  // 处理弹窗中的数据更新（字段生成完成后）
+  const handleDataUpdate = (updatedWords: Word[]) => {
+    // 更新inputs状态，确保下次打开弹窗时能看到生成的数据
+    setInputs(prevInputs => {
+      const newInputs = [...prevInputs]
+      updatedWords.forEach(updatedWord => {
+        const index = newInputs.findIndex(word => word.id === updatedWord.id)
+        if (index !== -1) {
+          newInputs[index] = { ...newInputs[index], ...updatedWord }
+        }
+      })
+      return newInputs
+    })
+    
+    // 如果confirmed状态中有对应的单词，也更新它
+    if (confirmed.length > 0) {
+      setConfirmed(prevConfirmed => {
+        const newConfirmed = [...prevConfirmed]
+        updatedWords.forEach(updatedWord => {
+          const index = newConfirmed.findIndex(word => word.id === updatedWord.id)
+          if (index !== -1) {
+            newConfirmed[index] = { ...newConfirmed[index], ...updatedWord }
+          }
+        })
+        return newConfirmed
+      })
+    }
+  }
+
+  const handleRegenerateImage = async (wordId: number): Promise<string | null> => {
+    try {
+      // 找到要重新生成图片的单词
+      const wordToUpdate = inputs.find(word => word.id === wordId) || 
+                           confirmed.find(word => word.id === wordId)
+      
+      if (!wordToUpdate || !wordToUpdate.word.trim()) {
+        console.error('找不到单词或单词为空')
+        return null
+      }
+
+      // 调用图片搜索API
+      const result = await searchImage(wordToUpdate.word.trim())
+      
+      if (result.success && result.data?.imageUrl) {
+        // 更新图片URL
+        const updatedWord = { ...wordToUpdate, imageUrl: result.data.imageUrl }
+        
+        // 更新inputs状态
+        setInputs(prevInputs => prevInputs.map(word => 
+          word.id === wordId ? updatedWord : word
+        ))
+        
+        // 如果confirmed状态中也有这个单词，也更新它
+        if (confirmed.length > 0) {
+          setConfirmed(prevConfirmed => prevConfirmed.map(word => 
+            word.id === wordId ? updatedWord : word
+          ))
+        }
+        
+        console.log('图片重新生成成功:', wordToUpdate.word)
+        return result.data.imageUrl // 返回新生成的图片URL
+      } else {
+        console.error('图片搜索失败:', result.error)
+        return null
+      }
+    } catch (error) {
+      console.error('重新生成图片失败:', error)
+      return null
+    }
+  }
+
+  // 添加新的ref用于滚动到新添加的单词
+  const newWordRef = useRef<HTMLDivElement>(null)
+  const [lastAddedWordId, setLastAddedWordId] = useState<number | null>(null)
+
+  // 6. 手动添加单词的处理函数
   const handleAddWord = () => {
     // 生成唯一ID：用当前时间+随机数，保证只在客户端事件中生成
     const newId = Date.now() + Math.floor(Math.random() * 1000000)
@@ -214,47 +445,100 @@ export default function WorkspacePage() {
       phonetic: "",
       phonics: "",
       chinese: "",
+      pos: "",
       example: "",
       translation: "",
       imageUrl: "",
     }
     
-    // 将新单词添加到状态中（添加到列表末尾）
-    setWords(prevWords => [...prevWords, newWord])
+    // 将新单词添加到inputs状态中（添加到列表末尾）
+    setInputs(prevInputs => [...prevInputs, newWord])
+    setLastAddedWordId(newId)
+    
+    // 自动滚动到新添加的单词
+    setTimeout(() => {
+      if (newWordRef.current) {
+        newWordRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // 聚焦到新添加的输入框
+        const inputElement = newWordRef.current.querySelector('input')
+        if (inputElement) {
+          inputElement.focus()
+        }
+      }
+    }, 100)
   }
 
   // 6. 表格编辑：输入框双向绑定
   const handleInputChange = (id: number, field: keyof Word, value: string) => {
-    setWords(prevWords => prevWords.map(word => {
-      if (word.id === id) {
-        const updatedWord = { ...word, [field]: value };
-        
-        // 当单词字段更新时，自动生成自然拼读拆分
-        if (field === 'word' && value.trim() && !updatedWord.phonics) {
-          updatedWord.phonics = generatePhonicsSplit(value.trim());
+    // 清除lastAddedWordId，因为用户已经开始编辑
+    if (lastAddedWordId === id) {
+      setLastAddedWordId(null)
+    }
+    
+    // 根据当前阶段更新对应的状态
+    if (currentStage === 'input') {
+      setInputs(prevInputs => prevInputs.map(word => {
+        if (word.id === id) {
+          const updatedWord = { ...word, [field]: value };
+          
+          // 当单词字段更新时，自动生成自然拼读拆分
+          if (field === 'word' && value.trim() && !updatedWord.phonics) {
+            updatedWord.phonics = generatePhonicsSplit(value.trim());
+          }
+          
+          return updatedWord;
         }
-        
-        return updatedWord;
-      }
-      return word;
-    }))
+        return word;
+      }))
+    } else if (currentStage === 'review') {
+      setDrafts(prevDrafts => prevDrafts.map(word => {
+        if (word.id === id) {
+          const updatedWord = { ...word, [field]: value };
+          
+          // 当单词字段更新时，自动生成自然拼读拆分
+          if (field === 'word' && value.trim() && !updatedWord.phonics) {
+            updatedWord.phonics = generatePhonicsSplit(value.trim());
+          }
+          
+          return updatedWord;
+        }
+        return word;
+      }))
+    }
   }
 
   // 7. 删除单词功能
   const handleDeleteWord = (id: number) => {
-    setWords(prevWords => prevWords.filter(word => word.id !== id))
+    // 根据当前阶段删除对应的状态
+    if (currentStage === 'input') {
+      setInputs(prevInputs => prevInputs.filter(word => word.id !== id))
+    } else if (currentStage === 'review') {
+      setDrafts(prevDrafts => prevDrafts.filter(word => word.id !== id))
+    }
   }
 
   // 8. 补全单词功能
   const handleCompleteWord = (updatedWord: Word) => {
-    setWords(prevWords => prevWords.map(word =>
-      word.id === updatedWord.id ? updatedWord : word
-    ))
+    // 根据当前阶段更新对应的状态
+    if (currentStage === 'input') {
+      setInputs(prevInputs => prevInputs.map(word =>
+        word.id === updatedWord.id ? updatedWord : word
+      ))
+    } else if (currentStage === 'review') {
+      setDrafts(prevDrafts => prevDrafts.map(word =>
+        word.id === updatedWord.id ? updatedWord : word
+      ))
+    }
   }
 
   // 9. 批量补全功能
   const handleBulkComplete = (updatedWords: Word[]) => {
-    setWords(updatedWords)
+    // 根据当前阶段更新对应的状态
+    if (currentStage === 'input') {
+      setInputs(updatedWords)
+    } else if (currentStage === 'review') {
+      setDrafts(updatedWords)
+    }
   }
 
   // 新增：文件上传处理函数
@@ -285,7 +569,7 @@ export default function WorkspacePage() {
         Papa.parse(csvContent, {
           header: true, // 第一行作为表头
           skipEmptyLines: true,
-          complete: (result) => {
+          complete: (result: any) => {
             console.log("CSV解析结果:", result)
             if (result.errors && result.errors.length > 0) {
               setUploadStatus("error")
@@ -298,6 +582,7 @@ export default function WorkspacePage() {
               'phonetic',
               'phonics',
               'chinese',
+              'pos',
               'example',
               'translation',
               'imageUrl',
@@ -320,12 +605,18 @@ export default function WorkspacePage() {
                 phonetic: row.phonetic?.trim() || "",
                 phonics: phonics,
                 chinese: row.chinese?.trim() || "",
+                pos: row.pos?.trim() || "",
                 example: row.example?.trim() || "",
                 translation: row.translation?.trim() || "",
                 imageUrl: row.imageUrl?.trim() || "",
               };
             })
-            setWords(prevWords => [...prevWords, ...newWords])
+            // 根据当前阶段添加到对应的状态
+            if (currentStage === 'input') {
+              setInputs(prevInputs => [...prevInputs, ...newWords])
+            } else if (currentStage === 'review') {
+              setDrafts(prevDrafts => [...prevDrafts, ...newWords])
+            }
             setUploadStatus("success")
             setUploadMessage(`成功导入${newWords.length}条单词数据！`)
             // 3秒后重置状态
@@ -334,7 +625,7 @@ export default function WorkspacePage() {
               setUploadMessage("")
             }, 3000)
           },
-          error: (error) => {
+          error: (error: any) => {
             setUploadStatus("error")
             setUploadMessage("CSV解析失败：" + error.message)
           }
@@ -396,6 +687,7 @@ export default function WorkspacePage() {
       'phonetic',
       'phonics',
       'chinese',
+      'pos',
       'example',
       'translation',
       'imageUrl',
@@ -815,6 +1107,53 @@ export default function WorkspacePage() {
               <CardDescription>逐个添加单词数据</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* 单词列表 */}
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {words.map((word, index) => (
+                  <div 
+                    key={word.id} 
+                    className="flex items-center gap-2 p-3 border rounded-lg"
+                    ref={word.id === lastAddedWordId ? newWordRef : null}
+                  >
+                    {/* 编号 */}
+                    <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm font-medium text-gray-600">
+                      {index + 1}
+                    </div>
+                    
+                    {/* 单词输入框 */}
+                    <div className="flex-1">
+                      <Input
+                        placeholder="请输入单词"
+                        value={word.word || ''}
+                        onChange={(e) => handleInputChange(word.id, 'word', e.target.value)}
+                        className="text-sm"
+                      />
+                    </div>
+                    
+                    {/* 删除按钮 */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteWord(word.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* 添加单词按钮 */}
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleAddWord}
+                  className="flex-1"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  添加新单词
+                </Button>
+              </div>
+
               {/* 示例单词控制 */}
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="text-sm text-gray-600">
@@ -827,61 +1166,6 @@ export default function WorkspacePage() {
                 >
                   {showSampleWords ? "隐藏示例" : "显示示例"}
                 </Button>
-              </div>
-
-              {/* 添加单词按钮和批量补全按钮 */}
-              <div className="flex gap-2">
-                <Button 
-                  onClick={handleAddWord}
-                  className="flex-1"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  添加新单词
-                </Button>
-                <BulkCompletionButton
-                  words={words}
-                  onComplete={handleBulkComplete}
-                  size="sm"
-                  variant="outline"
-                />
-              </div>
-              
-              {/* 单词列表 */}
-              <div className="space-y-3 max-h-60 overflow-y-auto">
-                {words.map((word) => (
-                  <div key={word.id} className="flex items-center gap-2 p-3 border rounded-lg">
-                    <div className="flex-1 grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="单词"
-                        value={word.word}
-                        onChange={(e) => handleInputChange(word.id, 'word', e.target.value)}
-                        className="text-sm"
-                      />
-                      <Input
-                        placeholder="音标"
-                        value={word.phonetic}
-                        onChange={(e) => handleInputChange(word.id, 'phonetic', e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                    <div className="flex gap-1">
-                      <CompletionButton
-                        word={word}
-                        onComplete={handleCompleteWord}
-                        size="sm"
-                        variant="ghost"
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteWord(word.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
               </div>
             </CardContent>
           </Card>
@@ -979,8 +1263,22 @@ export default function WorkspacePage() {
           </Card>
         </div>
 
+        {/* 数据审核按钮 */}
+        {words.length > 0 && (
+          <div className="flex justify-center">
+            <Button 
+              onClick={handleOpenReviewDialog}
+              size="lg"
+              className="px-8 py-3"
+            >
+              <Wand2 className="h-5 w-5 mr-2" />
+              审核并生成字段
+            </Button>
+          </div>
+        )}
+
         {/* ② 卡片预览区 */}
-        <Card>
+        <Card id="card-preview-section">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
@@ -999,69 +1297,137 @@ export default function WorkspacePage() {
 
               <TabsContent value="front" className="mt-6">
                 <div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-5 justify-items-center bg-gray-100 max-w-[1200px] mx-auto py-5 px-5">
-                    {pagedWords.map((word) => (
-                      <CardPreview
-                        key={`front-${word.id}`}
-                        data={word as WordCardData}
-                        mode="preview"
-                        showImage={true}
-                        showPhonetic={true}
-                        showPhonics={true}
-                        showChinese={false}
-                        showExample={false}
-                        showTranslation={false}
-                      />
-                    ))}
-                  </div>
-                  {/* 分页控件 */}
-                  <div className="flex items-center justify-center gap-4 mt-6">
-                    <button
-                      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
-                      onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
-                      disabled={previewPage === 1}
-                    >上一页</button>
-                    <span className="text-sm">第 {previewPage} / {totalPages} 页</span>
-                    <button
-                      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
-                      onClick={() => setPreviewPage(p => Math.min(totalPages, p + 1))}
-                      disabled={previewPage === totalPages}
-                    >下一页</button>
-                  </div>
+                  {/* 调试信息 */}
+                  {words.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="mb-2">暂无单词数据</p>
+                      <p className="text-sm">请先添加单词或显示示例单词</p>
+                      <Button 
+                        onClick={() => setShowSampleWords(true)}
+                        className="mt-3"
+                        variant="outline"
+                      >
+                        显示示例单词
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {words.length > 0 && wordsFiltered.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="mb-2">单词数据不完整</p>
+                      <p className="text-sm">请确保单词有完整的word字段</p>
+                      <Button 
+                        onClick={handleDebugData}
+                        className="mt-3"
+                        variant="outline"
+                      >
+                        调试数据
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {wordsFiltered.length > 0 && (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-5 justify-items-center bg-gray-100 max-w-[1200px] mx-auto py-5 px-5">
+                        {pagedWords.map((word) => (
+                          <CardPreview
+                            key={`front-${word.id}`}
+                            data={word as WordCardData}
+                            mode="preview"
+                            showImage={true}
+                            showPhonetic={true}
+                            showPhonics={true}
+                            showPos={true}
+                            showChinese={false}
+                            showExample={false}
+                            showTranslation={false}
+                          />
+                        ))}
+                      </div>
+                      {/* 分页控件 */}
+                      <div className="flex items-center justify-center gap-4 mt-6">
+                        <button
+                          className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                          onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
+                          disabled={previewPage === 1}
+                        >上一页</button>
+                        <span className="text-sm">第 {previewPage} / {totalPages} 页</span>
+                        <button
+                          className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                          onClick={() => setPreviewPage(p => Math.min(totalPages, p + 1))}
+                          disabled={previewPage === totalPages}
+                        >下一页</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </TabsContent>
 
               <TabsContent value="back" className="mt-6">
                 <div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-5 justify-items-center bg-gray-100 max-w-[1200px] mx-auto py-5 px-5">
-                    {pagedWords.map((word) => (
-                      <CardPreview
-                        key={`back-${word.id}`}
-                        data={word as WordCardData}
-                        mode="print"
-                        showImage={false}
-                        showPhonetic={false}
-                        showPhonics={false}
-                        showChinese={true}
-                        showExample={true}
-                        showTranslation={true}
-                      />
-                    ))}
-                  </div>
-                  {/* 分页控件 */}
-                  <div className="flex items-center justify-center gap-4 mt-6">
-                    <button
-                      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
-                      onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
-                      disabled={previewPage === 1}
-                    >上一页</button>
-                    <span className="text-sm">第 {previewPage} / {totalPages} 页</span>
-                    <button
-                      className="px-3 py-1 rounded border text-sm disabled:opacity-50"
-                      onClick={() => setPreviewPage(p => Math.min(totalPages, p + 1))}
-                      disabled={previewPage === totalPages}
-                    >下一页</button>
-                  </div>
+                  {/* 调试信息 */}
+                  {words.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="mb-2">暂无单词数据</p>
+                      <p className="text-sm">请先添加单词或显示示例单词</p>
+                      <Button 
+                        onClick={() => setShowSampleWords(true)}
+                        className="mt-3"
+                        variant="outline"
+                      >
+                        显示示例单词
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {words.length > 0 && wordsFiltered.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <p className="mb-2">单词数据不完整</p>
+                      <p className="text-sm">请确保单词有完整的word字段</p>
+                      <Button 
+                        onClick={handleDebugData}
+                        className="mt-3"
+                        variant="outline"
+                      >
+                        调试数据
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {wordsFiltered.length > 0 && (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-20 gap-y-5 justify-items-center bg-gray-100 max-w-[1200px] mx-auto py-5 px-5">
+                        {pagedWords.map((word) => (
+                          <CardPreview
+                            key={`back-${word.id}`}
+                            data={word as WordCardData}
+                            mode="print"
+                            showImage={false}
+                            showPhonetic={false}
+                            showPhonics={false}
+                            showPos={true}
+                            showChinese={true}
+                            showExample={true}
+                            showTranslation={true}
+                          />
+                        ))}
+                      </div>
+                      {/* 分页控件 */}
+                      <div className="flex items-center justify-center gap-4 mt-6">
+                        <button
+                          className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                          onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
+                          disabled={previewPage === 1}
+                        >上一页</button>
+                        <span className="text-sm">第 {previewPage} / {totalPages} 页</span>
+                        <button
+                          className="px-3 py-1 rounded border text-sm disabled:opacity-50"
+                          onClick={() => setPreviewPage(p => Math.min(totalPages, p + 1))}
+                          disabled={previewPage === totalPages}
+                        >下一页</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </TabsContent>
             </Tabs>
@@ -1158,6 +1524,7 @@ export default function WorkspacePage() {
                     showImage={true}
                     showPhonetic={true}
                     showPhonics={true}
+                    showPos={true}
                     showChinese={false}
                     showExample={false}
                     showTranslation={false}
@@ -1200,6 +1567,7 @@ export default function WorkspacePage() {
                     showImage={false}
                     showPhonetic={false}
                     showPhonics={false}
+                    showPos={true}
                     showChinese={true}
                     showExample={true}
                     showTranslation={true}
@@ -1209,6 +1577,16 @@ export default function WorkspacePage() {
           </div>
         ))}
       </div>
+
+      {/* 数据审核弹窗 */}
+      <DataReviewDialog
+        open={showReviewDialog}
+        onOpenChange={setShowReviewDialog}
+        words={(confirmed.length > 0 ? confirmed : inputs).filter(word => word.word.trim())}
+        onConfirm={handleConfirmReview}
+        onRegenerateImage={handleRegenerateImage}
+        onDataUpdate={handleDataUpdate}
+      />
     </div>
   )
 }
