@@ -38,7 +38,7 @@
   - 行间距：6mm
 - **边距设置**：
   - 上边距：6mm
-  - 下边距：10mm
+  - 下边距：9mm
   - 侧边距：10mm
 
 ### 配置管理
@@ -50,7 +50,7 @@ export const pageConfig = {
   cols: 2, rows: 3,                               // 2×3网格
   card: { width: 75, height: 90, unit: 'mm' },    // 卡片尺寸
   colGap: 10, rowGap: 6,                          // 间距
-  paddingTop: 6, paddingBottom: 10, paddingSide: 10, // 边距
+  paddingTop: 6, paddingBottom: 9, paddingSide: 10, // 边距
 };
 ```
 

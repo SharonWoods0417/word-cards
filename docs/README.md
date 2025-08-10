@@ -363,7 +363,7 @@ export const pageConfig = {
   cols: 2, rows: 3,                               // 2×3网格
   card: { width: 75, height: 90, unit: 'mm' },    // 卡片尺寸
   colGap: 10, rowGap: 6,                          // 间距
-  paddingTop: 6, paddingBottom: 10, paddingSide: 10, // 边距
+  paddingTop: 6, paddingBottom: 9, paddingSide: 10, // 边距
 };
 ```
 
