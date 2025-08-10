@@ -35,9 +35,7 @@
 - **Geist** - 字体系统
 
 ### 核心功能库
-- **pdf-lib** - 精准A4布局PDF导出
-- **papaparse** - CSV文件解析
-- **html2canvas** - 网页截图功能
+- **papaparse** - CSV 文件解析
 
 ### AI服务集成
 - **OpenRouter API** - 文本字段智能补全（GPT-4o-mini模型）
@@ -73,8 +71,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.11",
     "postcss": "^8.5.6",
-    "tw-animate-css": "1.3.3",
-    "tailwindcss-animate": "^1.0.7"
+    "tw-animate-css": "1.3.3"
   }
 }
 ```
@@ -103,10 +100,7 @@
 ```json
 {
   "dependencies": {
-    "html2canvas": "^1.4.1",
-    "papaparse": "^5.5.3",
-    "pdf-lib": "^1.17.1",
-    "react-to-print": "^3.1.1"
+    "papaparse": "^5.5.3"
   }
 }
 ```
@@ -230,7 +224,7 @@ export default config
 - **数据确认** - 点击"确认生成卡片"进入预览阶段
 - **卡片预览** - 实时预览所有卡片的正反面效果
 - **打印布局** - A4纸张优化，2×3网格排列
-- **PDF导出** - 高质量PDF文件，支持双面打印
+- **导出/打印** - 浏览器打印或保存为 PDF（推荐 Chrome）
 - **数据状态** - 确认数据存储在 `confirmed` 状态中
 
 ## ✅ 功能流程（MVP阶段）
@@ -259,12 +253,12 @@ export default config
 
 ## 🖨️ 打印要求
 
-### PDF导出规格
+### 打印规格与设置
 - **页面尺寸**：A4（210mm × 297mm）
 - **卡片尺寸**：75mm × 90mm
 - **布局方式**：2列3行，每页6张卡片
 - **间距控制**：左右间距10mm，上下间距6mm
-- **打印优化**：支持双面打印，正反面精确对齐（短边翻转）
+- **打印优化**：双面打印短边翻转，正反面精确对齐
   - 反面每行列顺序已反转，确保与正面对应
   - 可通过“背面 X/Y 偏移（mm）”微调走纸误差
 

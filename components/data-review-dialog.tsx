@@ -7,18 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Wand2, Trash2, Eye, Check, X, Loader2 } from "lucide-react"
 import { completeAllFields } from "@/lib/api"
 import { ImageSelectionDialog } from "./image-selection-dialog"
+import type { Word } from "@/types/word"
 
-interface Word {
-  id: number
-  word: string
-  phonetic: string
-  phonics: string
-  chinese: string
-  pos: string
-  example: string
-  translation: string
-  imageUrl: string
-}
+// 统一从 types 引入 Word 类型
 
 interface DataReviewDialogProps {
   open: boolean

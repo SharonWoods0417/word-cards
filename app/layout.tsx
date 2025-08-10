@@ -4,9 +4,9 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: '儿童单词卡片生成工具',
+  description: '上传单词 · AI 补全 · 审核预览 · 浏览器打印/保存为 PDF（A4 双面短边翻转）',
+  generator: 'word-cards',
 }
 
 export default function RootLayout({
@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <head>
         <style>{`
 html {

@@ -12,7 +12,7 @@
 - 🔄 **数据审核流程** - 三阶段工作流：输入→审核→确认生成
 - 👀 **实时预览** - 实时预览卡片的正反面效果
 - 🖨️ **打印预览** - 专业的A4纸打印预览，支持正反面布局
-- 📄 **PDF导出** - 支持导出为PDF格式，优化打印布局
+- 📄 **导出/打印** - 浏览器打印或保存为 PDF（推荐 Chrome）
 - 🎴 **统一组件** - 使用 CardPreview 组件确保预览和打印效果一致
 - ⚙️ **统一配置** - 一次配置，处处生效的卡片尺寸管理
 
@@ -61,7 +61,7 @@ export const pageConfig = {
 - **数据确认** - 点击"确认生成卡片"进入预览阶段
 - **卡片预览** - 实时预览所有卡片的正反面效果
 - **打印布局** - A4纸张优化，2×3网格排列
-- **PDF导出** - 高质量PDF文件，支持双面打印
+- **导出/打印** - 浏览器打印或保存为 PDF（推荐 Chrome）
 - **数据状态** - 确认数据存储在 `confirmed` 状态中
 
 ## 🖨️ 打印预览功能
@@ -81,10 +81,10 @@ export const pageConfig = {
 - **尺寸提示** - 在页面标题旁显示当前卡片尺寸
 - **调试模式** - 可切换显示详细的布局参数
 
-## 📄 PDF导出功能
+## 📄 导出/打印
 
 ### 统一布局
-- **与打印预览一致** - PDF导出使用相同的布局参数
+- **与打印预览一致** - 打印/保存为 PDF 使用相同的布局参数
 - **毫米转点转换** - 自动将mm单位转换为pt单位
 - **精确排版** - 确保PDF中的卡片位置和打印预览完全一致
 
@@ -122,7 +122,7 @@ export const pageConfig = {
 - **UI 组件**: shadcn/ui (基于Radix UI)
 - **状态管理**: React Hooks (useState, useEffect, useCallback, useRef)
 - **数据存储**: localStorage
-- **PDF生成**: pdf-lib
+ 
 - **CSV解析**: papaparse
 - **AI服务**: OpenRouter API (GPT-4o-mini), Pexels API
 
@@ -276,7 +276,7 @@ export const pageConfig = {
 ### 配置生效范围
 - ✅ 网页预览卡片尺寸
 - ✅ 打印预览卡片尺寸
-- ✅ PDF导出卡片尺寸
+ 
 - ✅ 所有场景的布局参数
 
 ## 🔑 API 配置
@@ -296,7 +296,7 @@ export const pageConfig = {
 - ✅ **上传** - CSV文件批量导入
 - ✅ **编辑** - 表格编辑单词数据  
 - ✅ **预览** - 实时预览卡片效果
-- ✅ **导出** - PDF导出功能
+ 
 - ✅ **补全** - AI自动补全缺失字段
 - ✅ **审核流程** - 三阶段数据审核工作流
 - ✅ **图片管理** - 智能图片搜索和重新生成
@@ -308,7 +308,7 @@ export const pageConfig = {
 - ✅ 基础组件集成完成
 - ✅ 打印预览功能完成
 - ✅ 统一卡片尺寸配置完成
-- ✅ PDF导出功能完成
+ 
 - ✅ MVP功能逻辑完成
 - ✅ AI智能补全功能完成
 - ✅ 数据审核流程完成
@@ -339,7 +339,7 @@ export const pageConfig = {
 - [Tailwind CSS](https://tailwindcss.com/) - CSS 框架
 - [shadcn/ui](https://ui.shadcn.com/) - UI 组件库
 - [v0](https://v0.dev/) - AI 驱动的 UI 生成工具
-- [pdf-lib](https://pdf-lib.js.org/) - PDF 生成库
+ 
 - [OpenRouter](https://openrouter.ai/) - AI API 服务
 - [Pexels](https://www.pexels.com/) - 高质量图片资源
 

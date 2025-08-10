@@ -16,6 +16,7 @@ import { ChangeEvent } from "react"
 import Papa from 'papaparse'
 
 import CardPreview, { WordCardData } from "@/components/CardPreview";
+import type { Word } from "@/types/word";
 import { pageConfig } from "@/config/cardConfig";
 import { CompletionButton } from "@/components/completion-button";
 import { BulkCompletionButton } from "@/components/bulk-completion-button";
@@ -23,18 +24,7 @@ import { DataReviewDialog } from "@/components/data-review-dialog";
 import { generatePhonicsSplit } from "@/lib/phonics";
 import { searchImage } from "@/lib/api";
 
-// 1. 定义单词卡片的数据类型（Word接口）
-interface Word {
-  id: number; // 每个单词的唯一编号
-  word: string; // 单词本身
-  phonetic: string; // 音标
-  phonics: string; // 拼读拆分
-  chinese: string; // 中文释义
-  pos: string; // 词性
-  example: string; // 英文例句
-  translation: string; // 例句翻译
-  imageUrl: string; // 图片链接
-}
+// 统一从 types 引入 Word 类型
 
 // 示例数据用于展示UI结构
 const sampleWords: Word[] = [

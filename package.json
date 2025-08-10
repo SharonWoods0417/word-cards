@@ -25,8 +25,7 @@
     "papaparse": "^5.5.3",
     "react": "^19",
     "react-dom": "^19",
-    "tailwind-merge": "^2.5.5",
-    
+    "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.11",

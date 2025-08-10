@@ -3,12 +3,9 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Wand2, X, Check, RefreshCw } from "lucide-react"
+import type { Word } from "@/types/word"
 
-interface Word {
-  id: number
-  word: string
-  imageUrl: string
-}
+// 统一从 types 引入 Word 类型
 
 interface ImageSelectionDialogProps {
   open: boolean

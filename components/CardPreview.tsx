@@ -1,17 +1,8 @@
 import React from "react";
 import { getCardStyle, CardMode } from "../config/cardConfig";
+import type { Word as WordCardData } from "@/types/word";
 
-export interface WordCardData {
-  id: number;
-  word: string;
-  phonetic: string;
-  phonics: string;
-  chinese: string;
-  pos: string;
-  example: string;
-  translation: string;
-  imageUrl: string;
-}
+// 统一使用集中定义的 Word 类型作为卡片数据结构
 
 export interface CardPreviewProps {
   data: WordCardData;
