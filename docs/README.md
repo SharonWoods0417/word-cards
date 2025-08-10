@@ -30,7 +30,7 @@
 - **React 19** - 用户界面库
 
 ### 样式与UI
-- **Tailwind CSS 4.1.9** - 实用优先的CSS框架
+- **Tailwind CSS 4.1.11** - 实用优先的CSS框架（使用@tailwindcss/postcss插件）
 - **shadcn/ui** - 基于Radix UI的组件库
 - **Geist** - 字体系统
 
@@ -46,6 +46,147 @@
 ### 开发工具
 - **pnpm/npm** - 包管理器
 - **ESLint** - 代码质量检查
+
+## 🔧 当前环境配置
+
+### 系统环境
+- **操作系统**: macOS (darwin 24.6.0)
+- **Node.js**: v22.16.0
+- **npm**: v10.9.2
+- **包管理器**: npm (主要使用)
+
+### 依赖包版本详情
+
+#### 核心依赖
+```json
+{
+  "next": "15.2.4",
+  "react": "^19",
+  "react-dom": "^19",
+  "typescript": "^5"
+}
+```
+
+#### Tailwind CSS 相关
+```json
+{
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
+    "postcss": "^8.5.6",
+    "tw-animate-css": "1.3.3",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}
+```
+
+#### UI组件库
+```json
+{
+  "dependencies": {
+    "@radix-ui/react-label": "2.1.1",
+    "@radix-ui/react-progress": "1.1.1",
+    "@radix-ui/react-scroll-area": "1.2.2",
+    "@radix-ui/react-select": "2.1.4",
+    "@radix-ui/react-separator": "1.1.1",
+    "@radix-ui/react-slider": "1.2.2",
+    "@radix-ui/react-slot": "1.1.1",
+    "@radix-ui/react-tabs": "1.1.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "geist": "^1.3.1",
+    "lucide-react": "^0.454.0"
+  }
+}
+```
+
+#### 功能库
+```json
+{
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "papaparse": "^5.5.3",
+    "pdf-lib": "^1.17.1",
+    "react-to-print": "^3.1.1"
+  }
+}
+```
+
+### 配置文件详情
+
+#### Tailwind CSS 配置 (tailwind.config.js)
+```javascript
+/** @type {import('@tailwindcss/postcss').Config} */
+export default {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+      },
+    },
+  },
+  plugins: [],
+}
+```
+
+#### PostCSS 配置 (postcss.config.mjs)
+```javascript
+/** @type {import('postcss-load-config').Config} */
+const config = {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+}
+
+export default config
+```
+
+#### 全局样式 (app/globals.css)
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* CSS变量定义 */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  /* 其他颜色变量... */
+}
+
+/* 主题内联配置 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* 其他主题变量... */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+```
+
+### 环境变量配置
+项目使用 `.env.local` 文件存储环境变量：
+- **OpenRouter API密钥** - 用于AI文本字段补全
+- **Pexels API密钥** - 用于图片搜索
+
+### 开发服务器配置
+- **默认端口**: 3000
+- **备用端口**: 3001 (当3000被占用时自动切换)
+- **网络访问**: 支持局域网访问 (http://192.168.180.200:3000)
+- **热重载**: 支持Fast Refresh和文件变更自动重载
 
 ## 📂 数据结构
 
@@ -251,6 +392,180 @@ NEXT_PUBLIC_PEXELS_API_KEY=your_pexels_api_key
 
 详细配置说明请查看 [API 配置文档](./API_SETUP.md)
 
+## 🚨 故障排除
+
+### Tailwind CSS 排版突然消失问题
+
+#### 问题描述
+在开发过程中，可能会遇到网页正常显示但突然失去所有排版样式的情况。这通常表现为：
+- 页面内容正常显示，但没有任何样式
+- 所有 Tailwind CSS 类都不生效
+- 页面看起来像是纯HTML，没有CSS样式
+
+#### 问题原因分析
+经过实际测试和调试，排版突然消失的主要原因是：
+
+1. **依赖包版本不一致**
+   - `package.json` 中的依赖包版本与配置文件不匹配
+   - Tailwind CSS v4 的包与 v3 的配置文件混用
+   - PostCSS 插件配置与 Tailwind CSS 版本不匹配
+
+2. **配置文件语法错误**
+   - CSS 文件中使用了错误的 Tailwind 指令
+   - 配置文件格式与当前版本不兼容
+   - 缓存文件与新的配置不一致
+
+3. **环境变化导致的兼容性问题**
+   - 依赖包自动更新
+   - 缓存不一致
+   - 配置文件被意外修改
+
+#### 解决方案
+
+##### 立即修复
+```bash
+# 1. 停止开发服务器
+pkill -f "next dev"
+
+# 2. 清除构建缓存
+rm -rf .next
+
+# 3. 重新安装正确的依赖包
+npm uninstall tailwindcss autoprefixer
+npm install -D @tailwindcss/postcss
+
+# 4. 重新启动服务器
+npm run dev
+```
+
+##### 配置文件修复
+确保以下文件使用正确的 v4 语法：
+
+**`app/globals.css`**：
+```css
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* 其他样式... */
+
+@theme inline {
+  --color-background: var(--background);
+  /* 其他颜色变量... */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+```
+
+**`tailwind.config.js`**：
+```javascript
+/** @type {import('@tailwindcss/postcss').Config} */
+export default {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  // 其他配置...
+}
+```
+
+**`postcss.config.mjs`**：
+```javascript
+const config = {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+}
+
+export default config
+```
+
+#### 预防措施
+
+##### 1. 锁定依赖包版本
+```json
+// 在 package.json 中使用精确版本
+"@tailwindcss/postcss": "4.1.9"  // 而不是 "^4.1.9"
+```
+
+##### 2. 创建配置验证脚本
+```bash
+# 在 package.json 的 scripts 中添加
+"scripts": {
+  "verify-config": "node scripts/verify-config.js",
+  "predev": "npm run verify-config"
+}
+```
+
+##### 3. 定期清理缓存
+```bash
+# 添加到 package.json scripts
+"scripts": {
+  "clean": "rm -rf .next node_modules/.cache",
+  "fresh-start": "npm run clean && npm install && npm run dev"
+}
+```
+
+##### 4. 使用版本锁定文件
+- 确保 `package-lock.json` 不被忽略
+- 定期运行 `npm audit` 和 `npm outdated` 检查
+
+##### 5. 环境隔离
+- 使用 Docker 或容器化开发环境
+- 使用 nvm 管理 Node.js 版本
+- 避免全局安装可能冲突的包
+
+#### 环境检查
+
+在开始故障排除之前，请先检查基本环境：
+
+```bash
+# 检查Node.js版本
+node --version  # 应该是 v22.16.0 或更高
+
+# 检查npm版本
+npm --version   # 应该是 v10.9.2 或更高
+
+# 检查当前工作目录
+pwd             # 应该显示项目根目录
+
+# 检查依赖包是否正确安装
+npm list --depth=0
+
+# 检查关键配置文件是否存在
+ls -la tailwind.config.js postcss.config.mjs app/globals.css
+```
+
+#### 故障排除检查清单
+- [ ] 检查 `package.json` 中的依赖包版本
+- [ ] 验证 `tailwind.config.js` 配置格式
+- [ ] 确认 `postcss.config.mjs` 插件配置
+- [ ] 检查 `app/globals.css` 语法
+- [ ] 清除 `.next` 构建缓存
+- [ ] 重启开发服务器
+- [ ] 检查终端错误信息
+
+#### 常见错误信息及解决方案
+
+**错误**：`The 'border-border' class does not exist`
+**原因**：CSS 文件中使用了 v4 语法但环境是 v3
+**解决**：确保使用正确的 Tailwind CSS v4 配置
+
+**错误**：`@tailwind base is no longer available in v4`
+**原因**：CSS 文件使用了 v3 语法但环境是 v4
+**解决**：将 `@tailwind base` 改为 `@import "tailwindcss"`
+
+通过以上措施，可以有效预防和快速解决 Tailwind CSS 排版突然消失的问题。
+
 ## 📋 开发计划
 
 ### 🎯 MVP 版本（已完成）
@@ -288,8 +603,11 @@ NEXT_PUBLIC_PEXELS_API_KEY=your_pexels_api_key
 
 ### 环境要求
 
-- Node.js 18+ 
-- npm 或 pnpm
+- **Node.js**: v22.16.0 或更高版本
+- **npm**: v10.9.2 或更高版本
+- **操作系统**: 支持 macOS、Windows、Linux
+- **内存**: 建议 8GB 或更多
+- **磁盘空间**: 至少 2GB 可用空间
 
 ### 安装依赖
 
@@ -320,6 +638,8 @@ pnpm dev
 ```
 
 打开 [http://localhost:3000](http://localhost:3000) 查看应用。
+
+**注意**: 如果端口3000被占用，服务器会自动切换到端口3001，终端会显示实际使用的端口号。
 
 ## 📖 使用说明
 

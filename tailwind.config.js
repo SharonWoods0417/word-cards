@@ -1,5 +1,5 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+/** @type {import('@tailwindcss/postcss').Config} */
+export default {
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
