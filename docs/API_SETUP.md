@@ -9,16 +9,19 @@
 
 ## 环境变量配置
 
-在项目根目录创建 `.env.local` 文件：
+在项目根目录创建 `.env.local` 文件（与代码一致，使用 NEXT_PUBLIC_* 命名）：
 
 ```bash
-# OpenRouter API 配置
-OPENROUTER_API_KEY=your_openrouter_api_key_here
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+# OpenRouter API 配置（文本补全）
+NEXT_PUBLIC_OPENROUTER_API_KEY=your_openrouter_api_key_here
+# 可选：如需自定义接口域名
+# OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
-# Pexels API 配置  
-PEXELS_API_KEY=your_pexels_api_key_here
+# Pexels API 配置（图片搜索）
+NEXT_PUBLIC_PEXELS_API_KEY=your_pexels_api_key_here
 ```
+
+提示：修改 `.env.local` 后需重启开发服务器；可访问 `/api-test` 页面查看加载状态。
 
 ## API 服务配置
 

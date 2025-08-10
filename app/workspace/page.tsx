@@ -14,7 +14,7 @@ import { Slider } from "@/components/ui/slider"
 import {
   Upload,
   Plus,
-  FileText,
+  
   Download,
   Printer,
   Eye,
@@ -28,7 +28,6 @@ import {
 } from "lucide-react"
 import { ChangeEvent } from "react"
 import Papa from 'papaparse'
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 
 import CardPreview, { WordCardData } from "@/components/CardPreview";
 import { pageConfig, mmToPt } from "@/config/cardConfig";
@@ -140,8 +139,21 @@ export default function WorkspacePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
 
-  const [isExporting, setIsExporting] = useState(false)
-  const [exportProgress, setExportProgress] = useState(0)
+  // 打印增强：背面微调（mm）
+  const [backOffsetXmm, setBackOffsetXmm] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('print_back_offset_x_mm')
+      return v ? Number(v) : 0
+    }
+    return 0
+  })
+  const [backOffsetYmm, setBackOffsetYmm] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const v = localStorage.getItem('print_back_offset_y_mm')
+      return v ? Number(v) : 0
+    }
+    return 0
+  })
   
   // 打印分页相关状态
   const cardsPerPage = 6 // 每页6张卡片
@@ -398,7 +410,7 @@ export default function WorkspacePage() {
         return null
       }
 
-      // 调用图片搜索API
+      // 调用图片搜索API（每次都请求随机结果）
       const result = await searchImage(wordToUpdate.word.trim())
       
       if (result.success && result.data?.imageUrl) {
@@ -417,7 +429,7 @@ export default function WorkspacePage() {
           ))
         }
         
-        console.log('图片重新生成成功:', wordToUpdate.word)
+        console.log('图片重新生成成功:', wordToUpdate.word, '→', result.data.imageUrl)
         return result.data.imageUrl // 返回新生成的图片URL
       } else {
         console.error('图片搜索失败:', result.error)
@@ -726,20 +738,18 @@ export default function WorkspacePage() {
 
   // 打印反面
   const handlePrintBack = () => {
-    // 设置打印模式为反面
     document.body.setAttribute('data-print', 'back')
-    
-    // 等待一帧，保证 DOM & 布局都稳定
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         window.print()
-        // 打印完成后清除属性
         setTimeout(() => {
           document.body.removeAttribute('data-print')
         }, 100)
       })
     })
   }
+
+  // 不提供校准页
 
   // 新增：PDF导出功能
   const handleExportPDF = async () => {
@@ -1049,6 +1059,11 @@ export default function WorkspacePage() {
   let PADDING_BOTTOM_MM = pageConfig.paddingBottom;
   let COL_GAP_MM = pageConfig.colGap;
   let ROW_GAP_MM = pageConfig.rowGap;
+
+  // 背面微调偏移应用（仅打印容器使用）
+  const backOffsetStyle: React.CSSProperties = {
+    transform: `translate(${backOffsetXmm}mm, ${backOffsetYmm}mm)`
+  }
 
   // 计算最大可用宽度
   let maxGridWidth = PAGE_WIDTH_MM - 2 * PADDING_MM;
@@ -1441,22 +1456,12 @@ export default function WorkspacePage() {
               <Download className="h-5 w-5" />
               导出与打印
             </CardTitle>
-            <CardDescription>选择导出格式和打印设置</CardDescription>
+          <CardDescription>打印设置与校准（建议先校准，再打印）</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {/* 导出选项 */}
+              {/* 打印与校准 */}
               <div className="space-y-3">
-                <Button 
-                  size="lg" 
-                  className="w-full flex items-center gap-2 bg-gray-900 hover:bg-gray-800"
-                  onClick={handleExportPDF}
-                  disabled={isExporting}
-                >
-                  <FileText className="h-4 w-4" />
-                  {isExporting ? `导出中 ${Math.round(exportProgress)}%` : '导出为 PDF'}
-                </Button>
-
                 <Button 
                   size="lg" 
                   className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
@@ -1484,6 +1489,43 @@ export default function WorkspacePage() {
                   <Printer className="h-4 w-4" />
                   打印反面
                 </Button>
+
+                {/* 偏移设置 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="col-span-1">
+                    <Label className="text-sm">背面X偏移（mm，左负右正）</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={backOffsetXmm}
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        setBackOffsetXmm(v)
+                        localStorage.setItem('print_back_offset_x_mm', String(v))
+                      }}
+                      placeholder="如 0 或 1.0"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Label className="text-sm">背面Y偏移（mm，上负下正）</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={backOffsetYmm}
+                      onChange={(e) => {
+                        const v = Number(e.target.value)
+                        setBackOffsetYmm(v)
+                        localStorage.setItem('print_back_offset_y_mm', String(v))
+                      }}
+                      placeholder="如 0 或 -0.5"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500">
+                  打印建议：纸张A4、边距无、比例100%、启用背景图形、双面短边翻转。
+                </div>
               </div>
             </div>
           </CardContent>
@@ -1535,8 +1577,8 @@ export default function WorkspacePage() {
         ))}
       </div>
 
-      {/* 打印专用容器 - 反面 */}
-      <div className="print-container hidden print:block" id="print-back">
+      {/* 打印专用容器 - 反面（应用背面偏移） */}
+      <div className="print-container hidden print:block" id="print-back" style={backOffsetStyle}>
         {/* 反面卡片 */}
         {Array.from({ length: totalPages }).map((_, pageIndex) => (
           <div 
@@ -1557,9 +1599,21 @@ export default function WorkspacePage() {
                 margin: '0 auto', // 确保水平居中
               }}
             >
-              {wordsFiltered
-                .slice(pageIndex * COLS * ROWS, (pageIndex + 1) * COLS * ROWS)
-                .map((word, idx) => (
+              {(() => {
+                const pageSlice = wordsFiltered.slice(
+                  pageIndex * COLS * ROWS,
+                  (pageIndex + 1) * COLS * ROWS
+                )
+                const reordered: typeof pageSlice = []
+                for (let r = 0; r < ROWS; r++) {
+                  const start = r * COLS
+                  const rowItems = pageSlice.slice(start, start + COLS)
+                  if (rowItems.length === 0) break
+                  // 反面每行列顺序反转（确保与正面短边翻转对齐）
+                  reordered.push(...rowItems.reverse())
+                }
+                return reordered
+              })().map((word, idx) => (
                   <CardPreview
                     key={`back-${pageIndex}-${idx}`}
                     data={word as WordCardData}
@@ -1577,6 +1631,8 @@ export default function WorkspacePage() {
           </div>
         ))}
       </div>
+
+      {/* 不提供校准页容器 */}
 
       {/* 数据审核弹窗 */}
       <DataReviewDialog

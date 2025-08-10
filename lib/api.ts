@@ -185,8 +185,10 @@ export async function searchImage(word: string): Promise<CompletionResponse> {
       return { success: false, error: 'Pexels API key not configured' };
     }
 
-    // 调用 Pexels API 搜索图片
-    const searchUrl = `${PEXELS_API_URL}?query=${encodeURIComponent(word)}&per_page=1&orientation=landscape`;
+    // 调用 Pexels API 搜索图片（增加随机页与多结果，避免每次都返回第一张导致重复）
+    const perPage = 15;
+    const page = Math.floor(Math.random() * 8) + 1; // 1~8 随机页
+    const searchUrl = `${PEXELS_API_URL}?query=${encodeURIComponent(word)}&per_page=${perPage}&page=${page}&orientation=landscape`;
     
     const response = await fetch(searchUrl, {
       method: 'GET',
@@ -207,8 +209,9 @@ export async function searchImage(word: string): Promise<CompletionResponse> {
     }
 
     // 获取第一张图片的URL
-    const photo = photos[0];
-    const imageUrl = photo.src?.medium || photo.src?.large || photo.src?.original;
+    const randomIndex = Math.floor(Math.random() * photos.length);
+    const photo = photos[randomIndex];
+    const imageUrl = photo?.src?.large || photo?.src?.medium || photo?.src?.original;
     
     if (!imageUrl) {
       throw new Error('图片URL无效');

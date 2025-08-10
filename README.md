@@ -143,7 +143,7 @@ pnpm install
 
 ### 环境配置
 
-创建 `.env.local` 文件并配置API密钥：
+创建 `.env.local` 文件并配置API密钥（命名与代码一致，使用 NEXT_PUBLIC_*）：
 
 ```bash
 # OpenRouter API密钥（用于文本字段补全）

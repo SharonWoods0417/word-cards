@@ -44,8 +44,14 @@ export function ImageSelectionDialog({
   const handleRegenerate = async () => {
     setIsRegenerating(true)
     try {
-      // 调用父组件的重新生成图片函数，获取新图片URL
-      const newImage = await onRegenerateImage(word.id)
+      // 调用父组件的重新生成图片函数，获取新图片URL（多试几次避免API偶尔返回重复）
+      let newImage = await onRegenerateImage(word.id)
+      // 如果新旧一致或为空，最多重试2次
+      let retries = 0
+      while (retries < 2 && (!newImage || newImage === currentImageUrl)) {
+        newImage = await onRegenerateImage(word.id)
+        retries += 1
+      }
       
       if (newImage) {
         setNewImageUrl(newImage)
