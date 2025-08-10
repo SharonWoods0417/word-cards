@@ -23,6 +23,7 @@ import { BulkCompletionButton } from "@/components/bulk-completion-button";
 import { DataReviewDialog } from "@/components/data-review-dialog";
 import { generatePhonicsSplit } from "@/lib/phonics";
 import { searchImage } from "@/lib/api";
+import { transformCsvData } from "@/lib/csv";
 
 // 统一从 types 引入 Word 类型
 
@@ -559,46 +560,32 @@ export default function WorkspacePage() {
           skipEmptyLines: true,
           complete: (result: any) => {
             console.log("CSV解析结果:", result)
+            // 放宽错误处理：如果存在可用数据则继续，仅提示
             if (result.errors && result.errors.length > 0) {
+              console.warn("Papa.parse errors:", result.errors)
+            }
+            // 宽松映射 + 标准化转换（带分隔符回退尝试）
+            let parseResult: any = result
+            if (!Array.isArray(parseResult.data) || parseResult.data.length === 0) {
+              const tryOptions = [ { delimiter: ';' }, { delimiter: '\t' } ]
+              for (const opt of tryOptions) {
+                const res2 = Papa.parse(csvContent, { header: true, skipEmptyLines: true, ...opt })
+                if (Array.isArray(res2.data) && res2.data.length > 0) {
+                  parseResult = res2
+                  break
+                }
+              }
+            }
+
+            const headers = (parseResult.meta?.fields as string[]) || []
+            const rows = (parseResult.data as any[]) || []
+            const { words: parsedWords, stats } = transformCsvData(rows, headers)
+            if (parsedWords.length === 0) {
               setUploadStatus("error")
-              setUploadMessage("CSV解析出错，请检查文件格式")
+              setUploadMessage("CSV解析完成，但未找到有效的单词行（请确保存在 'word' 列且至少一行不为空）")
               return
             }
-            // 字段校验
-            const requiredFields = [
-              'word',
-              'phonetic',
-              'phonics',
-              'chinese',
-              'pos',
-              'example',
-              'translation',
-              'imageUrl',
-            ]
-            const fields = result.meta.fields as string[]
-            const missingFields = requiredFields.filter(f => !fields.includes(f))
-            if (missingFields.length > 0) {
-              setUploadStatus("error")
-              setUploadMessage(`缺少字段：${missingFields.join('、')}，请下载模板并按要求填写`)
-              return
-            }
-            // 数据转换与合并
-            const newWords: Word[] = (result.data as any[]).map(row => {
-              const word = row.word?.trim() || "";
-              const phonics = row.phonics?.trim() || (word ? generatePhonicsSplit(word) : "");
-              
-              return {
-                id: Date.now() + Math.floor(Math.random() * 1000000), // 只在客户端事件中生成
-                word: word,
-                phonetic: row.phonetic?.trim() || "",
-                phonics: phonics,
-                chinese: row.chinese?.trim() || "",
-                pos: row.pos?.trim() || "",
-                example: row.example?.trim() || "",
-                translation: row.translation?.trim() || "",
-                imageUrl: row.imageUrl?.trim() || "",
-              };
-            })
+            const newWords: Word[] = parsedWords
             // 根据当前阶段添加到对应的状态
             if (currentStage === 'input') {
               setInputs(prevInputs => [...prevInputs, ...newWords])
@@ -606,7 +593,21 @@ export default function WorkspacePage() {
               setDrafts(prevDrafts => [...prevDrafts, ...newWords])
             }
             setUploadStatus("success")
-            setUploadMessage(`成功导入${newWords.length}条单词数据！`)
+            const missingSummary = [
+              stats.missingCounts.phonetic ? `音标缺失${stats.missingCounts.phonetic}` : '',
+              stats.missingCounts.chinese ? `中文缺失${stats.missingCounts.chinese}` : '',
+              stats.missingCounts.pos ? `词性缺失${stats.missingCounts.pos}` : '',
+              stats.missingCounts.example ? `例句缺失${stats.missingCounts.example}` : '',
+              stats.missingCounts.translation ? `翻译缺失${stats.missingCounts.translation}` : '',
+              stats.missingCounts.imageUrl ? `图片缺失${stats.missingCounts.imageUrl}` : '',
+            ].filter(Boolean).join('，')
+
+            const normalizedTip = stats.posNormalizedCount > 0 ? `；规范化词性${stats.posNormalizedCount}条` : ''
+            const discardedTip = stats.discardedRows > 0 ? `；丢弃无单词行${stats.discardedRows}条` : ''
+            const errorTip = result.errors && result.errors.length > 0 ? `；解析报告${result.errors.length}处问题（已尽量导入）` : ''
+            setUploadMessage(
+              `成功导入${newWords.length}条。${missingSummary || '各字段基本齐全'}${normalizedTip}${discardedTip}${errorTip}`
+            )
             // 3秒后重置状态
             setTimeout(() => {
               setUploadStatus("idle")

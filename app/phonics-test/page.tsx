@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { generatePhonicsSplit, testPhonicsSplit } from "@/lib/phonics"
+import { generatePhonicsSplit, testPhonicsSplit, PHONICS_RULES_VERSION } from "@/lib/phonics"
 
 export default function PhonicsTestPage() {
   const [word, setWord] = useState("")
@@ -37,7 +37,7 @@ export default function PhonicsTestPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">音节拆分测试工具</h1>
+      <h1 className="text-3xl font-bold mb-6">音节拆分测试工具 <span className="text-sm text-muted-foreground">{PHONICS_RULES_VERSION}</span></h1>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 单个单词测试 */}
