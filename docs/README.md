@@ -2,7 +2,7 @@
 
 ## 📌 项目背景
 
-我正在为我的孩子开发一个网页应用，用于生成"单词卡片"。这些卡片将被导出为 PDF 或图片，用于打印、剪裁和正反面对齐使用。用户可以通过上传 CSV 或手动输入单词的方式添加内容。
+我正在为我的孩子开发一个网页应用，用于生成"单词卡片"。这些卡片通过浏览器打印或保存为 PDF，用于打印、剪裁和正反面对齐使用。用户可以通过上传 CSV 或手动输入单词的方式添加内容。
 
 每张卡片正面包括：单词、图片、音标、自然拼读、词性  
 每张卡片背面包括：词性、中文释义、英文例句及对应的中文解释
@@ -364,7 +364,7 @@ export const pageConfig = {
 ### 配置生效范围
 - ✅ 网页预览卡片尺寸
 - ✅ 打印预览卡片尺寸
-- ✅ PDF导出卡片尺寸
+ 
 - ✅ 所有场景的布局参数
 
 ## 🔑 API 配置
@@ -570,7 +570,7 @@ ls -la tailwind.config.js postcss.config.mjs app/globals.css
 - ✅ **上传** - CSV文件批量导入
 - ✅ **编辑** - 表格编辑单词数据  
 - ✅ **预览** - 实时预览卡片效果
-- ✅ **导出** - PDF导出功能
+ 
 - ✅ **补全** - AI自动补全缺失字段
 - ✅ **审核流程** - 三阶段数据审核工作流
 - ✅ **图片管理** - 智能图片搜索和重新生成
@@ -582,7 +582,7 @@ ls -la tailwind.config.js postcss.config.mjs app/globals.css
 - ✅ 基础组件集成完成
 - ✅ 打印预览功能完成
 - ✅ 统一卡片尺寸配置完成
-- ✅ PDF导出功能完成
+ 
 - ✅ MVP功能逻辑完成
 - ✅ AI智能补全功能完成
 - ✅ 数据审核流程完成
@@ -675,7 +675,7 @@ book,/bʊk/,b-ook,书,n.,She is reading a book.,她正在读一本书。,
 - [Tailwind CSS](https://tailwindcss.com/) - CSS 框架
 - [shadcn/ui](https://ui.shadcn.com/) - UI 组件库
 - [v0](https://v0.dev/) - AI 驱动的 UI 生成工具
-- [pdf-lib](https://pdf-lib.js.org/) - PDF 生成库
+ 
 - [OpenRouter](https://openrouter.ai/) - AI API 服务
 - [Pexels](https://www.pexels.com/) - 高质量图片资源
 
