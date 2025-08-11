@@ -21,7 +21,7 @@ import { pageConfig } from "@/config/cardConfig";
 import { CompletionButton } from "@/components/completion-button";
 import { BulkCompletionButton } from "@/components/bulk-completion-button";
 import { DataReviewDialog } from "@/components/data-review-dialog";
-import { generatePhonicsSplit } from "@/lib/phonics";
+// 已下线自然拼读依赖
 import { searchImage } from "@/lib/api";
 import { transformCsvData } from "@/lib/csv";
 
@@ -33,7 +33,7 @@ const sampleWords: Word[] = [
     id: 1,
     word: "apple",
     phonetic: "/ˈæpəl/",
-    phonics: "ap-ple",
+    
     chinese: "苹果",
     pos: "n.",
     example: "I eat an apple every day.",
@@ -44,7 +44,7 @@ const sampleWords: Word[] = [
     id: 2,
     word: "book",
     phonetic: "/bʊk/",
-    phonics: "b-ook",
+    
     chinese: "书",
     pos: "n.",
     example: "She is reading a book.",
@@ -55,7 +55,7 @@ const sampleWords: Word[] = [
     id: 3,
     word: "cat",
     phonetic: "/kæt/",
-    phonics: "c-at",
+    
     chinese: "猫",
     pos: "n.",
     example: "The cat is sleeping on the sofa.",
@@ -66,7 +66,7 @@ const sampleWords: Word[] = [
     id: 4,
     word: "dog",
     phonetic: "/dɔːɡ/",
-    phonics: "d-og",
+    
     chinese: "狗",
     pos: "n.",
     example: "My dog likes to play in the park.",
@@ -432,7 +432,7 @@ export default function WorkspacePage() {
       id: newId,
       word: "",
       phonetic: "",
-      phonics: "",
+      
       chinese: "",
       pos: "",
       example: "",
@@ -470,10 +470,7 @@ export default function WorkspacePage() {
         if (word.id === id) {
           const updatedWord = { ...word, [field]: value };
           
-          // 当单词字段更新时，自动生成自然拼读拆分
-          if (field === 'word' && value.trim() && !updatedWord.phonics) {
-            updatedWord.phonics = generatePhonicsSplit(value.trim());
-          }
+          // 已下线：自动生成自然拼读
           
           return updatedWord;
         }
@@ -484,10 +481,7 @@ export default function WorkspacePage() {
         if (word.id === id) {
           const updatedWord = { ...word, [field]: value };
           
-          // 当单词字段更新时，自动生成自然拼读拆分
-          if (field === 'word' && value.trim() && !updatedWord.phonics) {
-            updatedWord.phonics = generatePhonicsSplit(value.trim());
-          }
+          // 已下线：自动生成自然拼读
           
           return updatedWord;
         }
@@ -674,7 +668,6 @@ export default function WorkspacePage() {
     const header = [
       'word',
       'phonetic',
-      'phonics',
       'chinese',
       'pos',
       'example',
@@ -1034,7 +1027,7 @@ export default function WorkspacePage() {
                             mode="preview"
                             showImage={true}
                             showPhonetic={true}
-                            showPhonics={true}
+                            
                             showPos={true}
                             showChinese={false}
                             showExample={false}
@@ -1102,7 +1095,7 @@ export default function WorkspacePage() {
                             mode="print"
                             showImage={false}
                             showPhonetic={false}
-                            showPhonics={false}
+                            
                             showPos={true}
                             showChinese={true}
                             showExample={true}
@@ -1248,7 +1241,7 @@ export default function WorkspacePage() {
                     mode="print"
                     showImage={true}
                     showPhonetic={true}
-                    showPhonics={true}
+                   
                     showPos={true}
                     showChinese={false}
                     showExample={false}
@@ -1303,7 +1296,7 @@ export default function WorkspacePage() {
                     mode="print"
                     showImage={false}
                     showPhonetic={false}
-                    showPhonics={false}
+                   
                     showPos={true}
                     showChinese={true}
                     showExample={true}

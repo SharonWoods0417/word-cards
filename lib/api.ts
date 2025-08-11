@@ -1,5 +1,5 @@
 // API 工具函数 - 字段自动补全功能
-import { generatePhonicsSplit } from './phonics';
+// 已下线自然拼读依赖
 
 // 环境变量类型定义
 interface ApiConfig {
@@ -64,7 +64,8 @@ export function checkApiConfig(): { openRouter: boolean; pexels: boolean } {
  */
 export async function completeTextFields(
   word: string,
-  fields: ('phonetic' | 'chinese' | 'example' | 'translation' | 'pos')[]
+  fields: ('phonetic' | 'chinese' | 'example' | 'translation' | 'pos')[],
+  opts?: { example?: string }
 ): Promise<CompletionResponse> {
   try {
     const config = getApiConfig();
@@ -75,33 +76,31 @@ export async function completeTextFields(
     // 构建统一的提示词
     const systemPrompt = `你是一个专业的英语教学助手，专门为儿童制作单词卡片。请根据要求提供准确、简洁的内容。`;
     
+    const requested = new Set(fields);
+    const hasExampleCtx = !!opts?.example && requested.has('translation');
+
+    const guidelines = [
+      requested.has('phonetic') ? '- phonetic: 音标，格式为 /音标/，例如 /ˈæpəl/' : '',
+      requested.has('chinese') ? '- chinese: 中文释义，简洁明了' : '',
+      requested.has('example') ? '- example: 英文例句，简单易懂，适合儿童' : '',
+      requested.has('translation') ? (
+        hasExampleCtx
+          ? `- translation: 请将下方提供的英文例句逐句准确翻译为简体中文，语义一致；不得编造新例句；保持自然表达`
+          : '- translation: 例句的中文翻译，需与 example 完全对应'
+      ) : '',
+      requested.has('pos') ? '- pos: 词性，使用标准缩写（n.名词, v.动词, adj.形容词, adv.副词, prep.介词, conj.连词, pron.代词, int.感叹词）' : ''
+    ].filter(Boolean).join('\n');
+
+    const exampleContext = hasExampleCtx
+      ? `\n已给定的英文例句为：\n>>> ${opts!.example}\n请务必仅翻译上述这句英文到 translation 字段；不要改写或新增 example。`
+      : '';
+
     const userPrompt = `请为英文单词 "${word}" 补全以下字段，只返回JSON格式的结果，不要包含任何其他文字：
 
-${fields.map(field => {
-  switch (field) {
-    case 'phonetic':
-      return '- phonetic: 音标，格式为 /音标/，例如 /ˈæpəl/';
-    case 'chinese':
-      return '- chinese: 中文释义，简洁明了';
-    case 'example':
-      return '- example: 英文例句，简单易懂，适合儿童';
-    case 'translation':
-      return '- translation: 例句的中文翻译';
-    case 'pos':
-      return '- pos: 词性，使用标准缩写（n.名词, v.动词, adj.形容词, adv.副词, prep.介词, conj.连词, pron.代词, int.感叹词）';
-    default:
-      return '';
-  }
-}).join('\n')}
+${guidelines}
+${exampleContext}
 
-请返回格式：
-{
-  "phonetic": "音标",
-  "chinese": "中文释义", 
-  "example": "英文例句",
-  "translation": "中文翻译",
-  "pos": "词性"
-}`;
+仅返回包含所请求字段键名的 JSON（不要包含未请求字段）。`;
 
     // 调用 OpenRouter API
     const response = await fetch(OPENROUTER_API_URL, {
@@ -118,7 +117,7 @@ ${fields.map(field => {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.3,
+        temperature: 0.2,
         max_tokens: 500,
       }),
     });
@@ -149,7 +148,7 @@ ${fields.map(field => {
       }
     }
 
-    // 构建返回数据
+    // 构建返回数据（仅采纳请求的字段）
     const data: Record<string, string> = {};
     fields.forEach(field => {
       if (parsedData[field]) {
@@ -157,10 +156,7 @@ ${fields.map(field => {
       }
     });
 
-    // 自动生成自然拼读拆分
-    if (word && !data.phonics) {
-      data.phonics = generatePhonicsSplit(word);
-    }
+    // 不再强制生成自然拼读（逐步下线）
 
     return {
       success: true,
@@ -255,7 +251,7 @@ export async function completeAllFields(word: any): Promise<CompletionResponse> 
     ) as ('phonetic' | 'chinese' | 'example' | 'translation' | 'pos')[];
     
     const textResult = textFields.length > 0 
-      ? await completeTextFields(word.word, textFields)
+      ? await completeTextFields(word.word, textFields, { example: word.example })
       : { success: true, data: {} };
     
     // 补全图片字段

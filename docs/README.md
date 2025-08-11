@@ -192,7 +192,7 @@ export default config
 |--------|------|------|--------|----------|
 | `word` | string | 单词本身 | 正面 | 用户输入 |
 | `phonetic` | string | 音标 | 正面 | OpenRouter API |
-| `phonics` | string | 自然拼读拆解 | 正面 | 用户输入 |
+<!-- 已下线：自然拼读（phonics）字段 -->
 | `pos` | string | 词性 | 正面 | OpenRouter API |
 | `imageUrl` | string | 单词对应图片地址 | 正面 | Pexels API |
 | `chinese` | string | 中文释义 | 反面 | OpenRouter API |
@@ -331,7 +331,7 @@ word-cards-workspace/
 ├── lib/                   # 工具函数
 │   ├── api.ts            # API 调用工具
 │   ├── utils.ts          # 通用工具函数
-│   └── phonics.ts        # 自然拼读拆分工具
+│   └── utils.ts          # 通用工具函数
 ├── docs/                  # 项目文档
 │   ├── README.md         # 详细项目文档
 │   ├── API_SETUP.md      # API 配置说明
@@ -652,9 +652,9 @@ pnpm dev
 
 支持的 CSV 格式：
 ```csv
-word,phonetic,phonics,chinese,pos,example,translation,imageUrl
-apple,/ˈæpəl/,ap-ple,苹果,n.,I eat an apple every day.,我每天吃一个苹果。,
-book,/bʊk/,b-ook,书,n.,She is reading a book.,她正在读一本书。,
+word,phonetic,chinese,pos,example,translation,imageUrl
+apple,/ˈæpəl/,苹果,n.,I eat an apple every day.,我每天吃一个苹果。,
+book,/bʊk/,书,n.,She is reading a book.,她正在读一本书。,
 ```
 
 ## 🎯 贡献指南

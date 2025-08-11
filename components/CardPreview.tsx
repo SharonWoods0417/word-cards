@@ -9,7 +9,6 @@ export interface CardPreviewProps {
   mode: CardMode;
   showImage?: boolean;
   showPhonetic?: boolean;
-  showPhonics?: boolean;
   showChinese?: boolean;
   showPos?: boolean;
   showExample?: boolean;
@@ -23,7 +22,6 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
   mode,
   showImage = true,
   showPhonetic = true,
-  showPhonics = true,
   showChinese = true,
   showPos = true,
   showExample = true,
@@ -51,6 +49,8 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
   const fontPos = fontBase - 2; // 词性字号
   const fontExample = fontBase + 2; // 增大例句字号
   const fontTranslation = fontBase; // 增大翻译字号
+  // 正面整体上移微调（预览略多、打印略少）
+  const topNudge = (mode === "preview" ? -8 : -6);
 
   const cardClass = [
     "flex flex-col",
@@ -169,11 +169,13 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
           <>
             {/* 上40%区域：单词+音标 */}
             <div style={{
-              height: "72.73%", // 40% / 55% = 72.73%
+              height: "100%",
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
               alignItems: "center",
+              // 仅在正面时做轻微上移
+              marginTop: (mode === "preview" || (mode === "print" && !showChinese)) ? topNudge : 0,
             }}>
               {/* 英文单词 */}
               <div style={{ 
@@ -227,27 +229,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({
               )}
             </div>
             
-            {/* 下15%区域：拼读 */}
-            <div style={{
-              height: "27.27%", // 15% / 55% = 27.27%
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "center",
-              marginTop: "5px", // 向下移动拼读区域，与音标保持距离
-            }}>
-              {showPhonics && data.phonics && (
-                <div
-                  style={{
-                    fontSize: fontPhonics,
-                    color: "#888",
-                    textAlign: "center",
-                    fontFamily: "'Arial', 'Helvetica', sans-serif",
-                  }}
-                >
-                  {data.phonics}
-                </div>
-              )}
-            </div>
+            {/* 拼读已下线，不再渲染 */}
           </>
         )}
         

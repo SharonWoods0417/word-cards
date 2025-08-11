@@ -1,10 +1,8 @@
 import type { Word } from "@/types/word";
-import { generatePhonicsSplit } from "./phonics";
 
 export type CanonicalKey =
   | "word"
   | "phonetic"
-  | "phonics"
   | "chinese"
   | "pos"
   | "example"
@@ -43,15 +41,6 @@ function normalizeKey(key: string): string {
 const FIELD_ALIASES: Record<CanonicalKey, string[]> = {
   word: ["word", "单词", "lemma", "headword"],
   phonetic: ["phonetic", "音标", "ipa", "pronunciation"],
-  phonics: [
-    "phonics",
-    "自然拼读",
-    "syllables",
-    "syllable",
-    "split",
-    "音节",
-    "phonics_split",
-  ],
   chinese: [
     "chinese",
     "中文",
@@ -125,11 +114,7 @@ function isPhoneticValue(value: string): boolean {
   return /\/[^\/]+\//.test(v) || IPA_CHAR_RE.test(v);
 }
 
-function isPhonicsValue(value: string): boolean {
-  if (!value) return false;
-  const v = value.trim();
-  return /^[a-zA-Z]+(?:-[a-zA-Z]+)+$/.test(v);
-}
+// 已下线：自然拼读字段识别
 
 function isPosValue(value: string): boolean {
   if (!value) return false;
@@ -162,7 +147,6 @@ function scoreValueForField(value: string): ScoreMap {
   const score: ScoreMap = {
     word: 0,
     phonetic: 0,
-    phonics: 0,
     chinese: 0,
     pos: 0,
     example: 0,
@@ -174,7 +158,6 @@ function scoreValueForField(value: string): ScoreMap {
 
   if (isProbablyWordValue(v)) score.word += 3;
   if (isPhoneticValue(v)) score.phonetic += 4;
-  if (isPhonicsValue(v)) score.phonics += 3;
   if (isPosValue(v)) score.pos += 3;
   if (isImageUrlValue(v)) score.imageUrl += 4;
   if (isEnglishSentence(v)) score.example += 3;
@@ -192,20 +175,20 @@ function detectHeuristicHeaderMap(headers: string[], rows: any[]): HeaderMap {
   headers.forEach((h) => {
     const original = String(h);
     const acc: ScoreMap = {
-      word: 0, phonetic: 0, phonics: 0, chinese: 0, pos: 0, example: 0, translation: 0, imageUrl: 0,
-    };
+      word: 0, phonetic: 0, chinese: 0, pos: 0, example: 0, translation: 0, imageUrl: 0,
+    } as any;
     for (let i = 0; i < sampleCount; i++) {
       const row = rows[i];
       const val = row?.[original];
       const s = scoreValueForField(val ?? "");
-      (Object.keys(acc) as CanonicalKey[]).forEach((k) => acc[k] += s[k]);
+      (Object.keys(acc) as CanonicalKey[]).forEach((k) => acc[k] += (s as any)[k] ?? 0);
     }
     headerScores[original] = acc;
   });
 
   const usedHeaders = new Set<string>();
   const order: CanonicalKey[] = [
-    'word', 'phonetic', 'phonics', 'chinese', 'pos', 'example', 'translation', 'imageUrl'
+    'word', 'phonetic', 'chinese', 'pos', 'example', 'translation', 'imageUrl'
   ];
 
   order.forEach((field) => {
@@ -221,8 +204,8 @@ function detectHeuristicHeaderMap(headers: string[], rows: any[]): HeaderMap {
     }
     // 设置一个最低阈值，避免误判
     const threshold: Record<CanonicalKey, number> = {
-      word: 6, phonetic: 6, phonics: 5, chinese: 4, pos: 5, example: 5, translation: 5, imageUrl: 5
-    };
+      word: 6, phonetic: 6, chinese: 4, pos: 5, example: 5, translation: 5, imageUrl: 5
+    } as any;
     if (bestHeader && bestScore >= threshold[field]) {
       map[field] = bestHeader;
       usedHeaders.add(bestHeader);
@@ -327,14 +310,12 @@ export function normalizeRowToWord(row: any, map: HeaderMap): Word | null {
   if (!wordValue) return null; // 丢弃无 word 的行
 
   const phonetic = getCell(row, map.phonetic ?? null);
-  const rawPhonics = getCell(row, map.phonics ?? null);
   let chinese = getCell(row, map.chinese ?? null);
   let posRaw = getCell(row, map.pos ?? null);
   const example = getCell(row, map.example ?? null);
   const translation = getCell(row, map.translation ?? null);
   const imageUrl = getCell(row, map.imageUrl ?? null);
 
-  const phonics = rawPhonics || generatePhonicsSplit(wordValue);
   if (!posRaw && chinese) {
     const derived = derivePosFromChinese(chinese);
     if (derived.pos) {
@@ -348,7 +329,6 @@ export function normalizeRowToWord(row: any, map: HeaderMap): Word | null {
     id: Date.now() + Math.floor(Math.random() * 1_000_000),
     word: wordValue,
     phonetic,
-    phonics,
     chinese,
     pos,
     example,
@@ -382,17 +362,15 @@ export function transformCsvData(rows: any[], headers: string[]): CsvTransformRe
   const missingCounts: Record<CanonicalKey, number> = {
     word: 0, // 导入后不会为空（否则被丢弃）
     phonetic: 0,
-    phonics: 0,
     chinese: 0,
     pos: 0,
     example: 0,
     translation: 0,
     imageUrl: 0,
-  };
+  } as any;
 
   for (const w of words) {
     if (!w.phonetic) missingCounts.phonetic += 1;
-    if (!w.phonics) missingCounts.phonics += 1; // 理论上为 0，因为已自动生成
     if (!w.chinese) missingCounts.chinese += 1;
     if (!w.pos) missingCounts.pos += 1;
     if (!w.example) missingCounts.example += 1;

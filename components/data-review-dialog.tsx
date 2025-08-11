@@ -31,6 +31,7 @@ export function DataReviewDialog({
   const [reviewWords, setReviewWords] = useState<Word[]>(words)
   const [isLoading, setIsLoading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [rowGeneratingId, setRowGeneratingId] = useState<number | null>(null)
   const [generationProgress, setGenerationProgress] = useState(0)
   const [currentWord, setCurrentWord] = useState('')
   const [generationStatus, setGenerationStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -150,6 +151,22 @@ export function DataReviewDialog({
       }
     }
     return null
+  }
+
+  // 生成单行缺失字段
+  const handleGenerateMissingForRow = async (rowWord: Word) => {
+    setRowGeneratingId(rowWord.id)
+    try {
+      const result = await completeAllFields(rowWord)
+      if (result.success && result.data) {
+        setReviewWords(prev => prev.map(w => w.id === rowWord.id ? { ...w, ...result.data } : w))
+        onDataUpdate?.(reviewWords.map(w => w.id === rowWord.id ? { ...w, ...result.data } : w))
+      }
+    } catch (e) {
+      console.error('单行生成缺失字段失败:', e)
+    } finally {
+      setRowGeneratingId(null)
+    }
   }
 
   // 生成所有字段
@@ -352,7 +369,7 @@ export function DataReviewDialog({
                   <TableHead className="w-24">单词</TableHead>
                   <TableHead className="w-24">音标</TableHead>
                   <TableHead className="w-20">词性</TableHead>
-                  <TableHead className="w-24">自然拼读</TableHead>
+                  
                   <TableHead className="w-32">中文释义</TableHead>
                   <TableHead className="w-40">英文例句</TableHead>
                   <TableHead className="w-40">中文翻译</TableHead>
@@ -398,15 +415,7 @@ export function DataReviewDialog({
                       />
                     </TableCell>
                     
-                    {/* 自然拼读 */}
-                    <TableCell>
-                      <Input
-                        value={word.phonics || ''}
-                        onChange={(e) => handleWordChange(word.id, 'phonics', e.target.value)}
-                        placeholder="自然拼读"
-                        className="h-8 text-sm"
-                      />
-                    </TableCell>
+                    
                     
                     {/* 中文释义 */}
                     <TableCell>
@@ -455,21 +464,42 @@ export function DataReviewDialog({
                           className="h-6 px-2 text-xs"
                         >
                           <Wand2 className="h-3 w-3 mr-1" />
-                          重新生成
+                          图片生成
                         </Button>
                       </div>
                     </TableCell>
                     
                     {/* 操作 */}
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteWord(word.id)}
-                        className="text-red-500 hover:text-red-700 h-6 px-2"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGenerateMissingForRow(word)}
+                          disabled={rowGeneratingId === word.id || isGenerating}
+                          className="h-6 px-2 text-xs"
+                        >
+                          {rowGeneratingId === word.id ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              生成中
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="h-3 w-3 mr-1" />
+                              生成缺失
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteWord(word.id)}
+                          className="text-red-500 hover:text-red-700 h-6 px-2"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

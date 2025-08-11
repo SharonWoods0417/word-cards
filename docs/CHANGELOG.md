@@ -10,6 +10,13 @@
 - 图片重新生成：Pexels 搜索结果使用随机页+随机挑选，弹窗内增加去重重试，显著降低重复
 - 文档与环境变量统一：全面使用 `NEXT_PUBLIC_OPENROUTER_API_KEY` 与 `NEXT_PUBLIC_PEXELS_API_KEY`
 
+### 🔥 功能下线（v1.6 预发布）
+- 自然拼读（phonics）功能完整下线：
+  - 删除 `lib/phonics.ts` 与 `/phonics-test` 测试页
+  - `types/word.ts` 移除 `phonics` 字段
+  - CSV 模板与解析、审核弹窗、卡片正面 UI、API 生成流程均移除 `phonics`
+  - 文档字段表将 `phonics` 标注为“已下线”
+
 ### 📝 文档
 - 更新 `docs/README.md` 与根目录 `README.md`：移除“PDF 导出”主流程说明，增加浏览器打印与偏移指引
 - 更新 `docs/API_SETUP.md`：统一环境变量命名
