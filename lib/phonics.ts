@@ -4,7 +4,7 @@
  */
 
 // 规则版本标识（用于页面显示与缓存确认）
-export const PHONICS_RULES_VERSION = 'rules-v4.1.4';
+export const PHONICS_RULES_VERSION = 'rules-v5.0.0';
 // 字母类别判定（与文档 1.0 一致）
 function isVowelChar(ch: string): boolean {
   return /[aeiou]/i.test(ch);
@@ -50,32 +50,53 @@ const VOWEL_PHONEMES = [
   'ɑ', 'ʊ', 'oʊ', 'aʊ', 'ɔɪ', 'eɪ', 'ɪə', 'ʊə'
 ];
 
-// 元音字母组合（不可拆分）——补充了文档中的 ou、常见双元音
-const VOWEL_TEAMS = [
-  'ai', 'ay', 'ea', 'ee', 'ie', 'igh', 'oa', 'ow', 'oo', 'oi', 'oy', 'ou',
-  'au', 'aw', 'ue', 'ew', 'ei', 'ey', 'ue'
+// 元音组合（不可拆分）——支持 2/3/4 字母，按“最长优先”匹配
+const VOWEL_TEAMS_ALL = [
+  // 4 字母（复杂多读整体保留）
+  'ough',
+  // 3 字母
+  'igh',
+  // 2 字母
+  'ai', 'ay', 'ea', 'ee', 'ie', 'oa', 'ow', 'oo', 'oi', 'oy', 'ou',
+  'au', 'aw', 'ue', 'ew', 'ei', 'ey', 'ui'
 ];
+// 预排序：最长优先
+const VOWEL_TEAMS = [...VOWEL_TEAMS_ALL].sort((a, b) => b.length - a.length);
 
 // R控制的元音组合
 const R_CONTROLLED_VOWELS = ['ar', 'er', 'ir', 'or', 'ur'];
-// R控制的三字母组合（优先于两字母与元音组合）
-const R_CONTROLLED_TRIGRAMS = ['air', 'ear', 'our', 'oar', 'eer', 'ure', 'ire', 'ore'];
+// R控制的三字母组合（优先于两字母与元音组合）——严格按文档
+const R_CONTROLLED_TRIGRAMS = ['air', 'are', 'ear', 'ere', 'eer', 'ire', 'ore', 'oar'];
 
 // 常见前缀
 const PREFIXES = [
   'un', 'in', 'im', 'dis', 're', 'pre', 'sub', 'mis', 'ex', 'tele',
-  'en', 'em', 'non', 'over', 'under', 'out', 'up', 'down', 'back'
+  'en', 'em', 'non', 'over', 'under', 'out', 'up', 'down', 'back',
+  // 文档新增常见前缀（普通优先级）
+  'inter', 'super', 'trans', 'semi', 'anti', 'auto'
 ];
 
 // 常见后缀
 const SUFFIXES = [
-  'ing', 'ed', 'tion', 'sion', 'ment', 'ness', 'ly', 'able', 'ous',
-  'ful', 'less', 'er', 'est', 'al', 'ive', 'ic', 'ical', 'ity'
+  // 文档 14 列表（名词/形容词、对比、能力、副词、动词形态、专用）
+  'tion', 'sion', 'ture', 'ment', 'ness', 'less', 'ful', 'ous', 'al', 'y', 'en',
+  'er', 'est',
+  'able', 'ible',
+  'ly',
+  'ing', 'ed',
+  'cian', 'cial', 'tial', 'ious', 'eous', 'age', 'ure',
+  // 兼容原列表
+  'ive', 'ic', 'ical', 'ity'
 ];
 
 // 更强优先级的常见前缀（在基础扫描前切分，不会影响 tiger 等词）
 const STRONG_PREFIXES = [
-  'dis', 're', 'pre', 'un', 'non', 'sub', 'ex', 'im', 'in', 'over', 'under'
+  // 文档 1：前缀（最高优先）
+  'un', 're', 'pre', 'dis', 'mis', 'non', 'over', 'under', 'sub',
+  // 也作为强前缀处理，优先切分
+  'inter', 'super', 'trans', 'semi', 'anti', 'auto',
+  // 兼容原有
+  'ex', 'im', 'in'
 ];
 
 // Final Stable Syllables
@@ -87,27 +108,52 @@ const FINAL_STABLE_SYLLABLES = [
   'le', 'tion', 'sion', 'cian', 'ture', 'sure', 'ure', 'age', 'ous', 'cial', 'tial', 'ient', 'ience'
 ];
 
-// 常见辅音二合字母（作为一个辅音单位处理，避免在其间拆分）
+// 常见辅音二合字母（按文档）
 const CONSONANT_DIGRAPHS = [
-  'th', 'sh', 'ch', 'ph', 'gh', 'wh', 'ck', 'ng', 'qu'
+  'ch', 'sh', 'th', 'wh', 'ph', 'gh'
 ];
 
-// 常见辅音三合/辅音丛（整体优先）
+// 常见辅音三合/辅音丛（整体优先）——严格按文档
 const CONSONANT_TRIGRAPHS = [
-  'tch', 'dge', 'sch', 'scr', 'spl', 'spr', 'str', 'thr', 'shr', 'squ'
+  'tch', 'squ', 'spr', 'str', 'scr', 'shr'
 ];
 
-// 常见起始辅音丛（用于 VCV/VCCCV 拆分启发）
+// 常见起始辅音丛：S-blends、L-blends、R-blends（文档 5/6/7）
 const INITIAL_BLENDS = [
-  'bl','cl','fl','gl','pl','sl','br','cr','dr','fr','gr','pr','tr',
-  'sc','sk','sm','sn','sp','st','sw','sch','scr','spl','spr','str','thr','shr','squ'
+  // L-blends
+  'bl','cl','fl','gl','pl','sl',
+  // R-blends
+  'br','cr','dr','fr','gr','pr','tr',
+  // S-blends
+  'sc','sk','sl','sm','sn','sp','st','sw'
 ];
 
-// 词首优先识别的三辅音丛（VCCCV），用于强制在丛后断开：street → str-eet
-const LEADING_TRIPLE_CLUSTERS = ['str','spl','spr','scr','thr','shr','sch','squ'];
+// 词首优先识别的三辅音丛（VCCCV），用于强制在丛后断开：street → str-eet（按文档）
+const LEADING_TRIPLE_CLUSTERS = ['squ','spr','str','scr','shr'];
 
-// 偏向开音节的常见结尾（用于 VCV / VCCV 启发，如 ti-ger, ti-cket）
-const PREFERRED_OPEN_ENDINGS = ['ti', 'to', 'tu'];
+// 特殊结尾（仅位置限定）
+const SPECIAL_FINALS = ['mb'];
+
+// Word Families（整体处理，优先于单元音）
+const WORD_FAMILIES = ['an', 'en', 'in', 'on', 'un'];
+
+// 特殊首字母（仅词首有效）
+const SPECIAL_INITIALS = ['kn', 'wr', 'gn', 'tw'];
+
+function matchVowelTeamAt(word: string, index: number): string | null {
+  for (const team of VOWEL_TEAMS) {
+    if (word.slice(index, index + team.length).toLowerCase() === team) {
+      return team;
+    }
+  }
+  return null;
+}
+
+function matchWordFamilyAt(word: string, index: number): string | null {
+  const pair = word.slice(index, index + 2).toLowerCase();
+  if (WORD_FAMILIES.includes(pair)) return pair;
+  return null;
+}
 
 /**
  * 检查字符串是否包含元音
@@ -177,149 +223,13 @@ function findFinalStableSyllable(word: string): string | null {
   return null;
 }
 
-/**
- * 检查是否为复合词
- */
-function isCompoundWord(word: string): string[] | null {
-  // 常见的复合词模式
-  const compoundPatterns = [
-    /^(foot)(ball)$/i,
-    /^(water)(melon)$/i,
-    /^(sun)(shine)$/i,
-    /^(rain)(bow)$/i,
-    /^(snow)(man)$/i,
-    /^(birth)(day)$/i,
-    /^(class)(room)$/i,
-    /^(play)(ground)$/i,
-    /^(home)(work)$/i,
-    /^(book)(store)$/i,
-    /^(air)(plane)$/i,
-    /^(fire)(works)$/i,
-    /^(base)(ball)$/i,
-    /^(basket)(ball)$/i,
-    /^(volley)(ball)$/i,
-    /^(tennis)(ball)$/i,
-    /^(foot)(print)$/i,
-    /^(hand)(shake)$/i,
-    /^(head)(ache)$/i,
-    /^(tooth)(brush)$/i,
-    /^(hair)(brush)$/i,
-    /^(door)(bell)$/i,
-    /^(mail)(box)$/i,
-    /^(news)(paper)$/i,
-    /^(note)(book)$/i,
-    /^(text)(book)$/i,
-    /^(work)(book)$/i,
-    /^(pass)(word)$/i,
-    /^(user)(name)$/i,
-    /^(web)(site)$/i,
-    /^(web)(page)$/i,
-    /^(down)(load)$/i,
-    /^(up)(load)$/i,
-    /^(back)(up)$/i,
-    /^(log)(in)$/i,
-    /^(sign)(up)$/i,
-    /^(check)(out)$/i,
-    /^(set)(up)$/i,
-    /^(clean)(up)$/i,
-    /^(wake)(up)$/i,
-    /^(get)(up)$/i,
-    /^(stand)(up)$/i,
-    /^(sit)(down)$/i,
-    /^(lie)(down)$/i,
-    /^(put)(down)$/i,
-    /^(turn)(off)$/i,
-    /^(turn)(on)$/i,
-    /^(switch)(off)$/i,
-    /^(switch)(on)$/i,
-    /^(pick)(up)$/i,
-    /^(give)(up)$/i,
-    /^(look)(up)$/i,
-    /^(make)(up)$/i,
-    /^(break)(fast)$/i,
-    /^(lunch)(time)$/i,
-    /^(dinner)(time)$/i,
-    /^(bed)(time)$/i,
-    /^(play)(time)$/i,
-    /^(work)(time)$/i,
-    /^(school)(time)$/i,
-    /^(class)(time)$/i,
-    /^(study)(time)$/i,
-    /^(read)(ing)$/i,
-    /^(writ)(ing)$/i,
-    /^(speak)(ing)$/i,
-    /^(listen)(ing)$/i,
-    /^(watch)(ing)$/i,
-    /^(play)(ing)$/i,
-    /^(work)(ing)$/i,
-    /^(learn)(ing)$/i,
-    /^(teach)(ing)$/i,
-    /^(help)(ing)$/i,
-    /^(clean)(ing)$/i,
-    /^(cook)(ing)$/i,
-    /^(shop)(ping)$/i,
-    /^(run)(ning)$/i,
-    /^(swim)(ming)$/i,
-    /^(sit)(ting)$/i,
-    /^(get)(ting)$/i,
-    /^(put)(ting)$/i,
-    /^(cut)(ting)$/i,
-    /^(hit)(ting)$/i,
-    /^(let)(ting)$/i,
-    /^(set)(ting)$/i,
-    /^(wet)(ting)$/i,
-    /^(pet)(ting)$/i,
-    /^(bet)(ting)$/i,
-    /^(net)(ting)$/i,
-    /^(jet)(ting)$/i,
-    /^(met)(ting)$/i,
-    /^(vet)(ting)$/i,
-    /^(yet)(ting)$/i,
-    /^(let)(ting)$/i,
-    /^(set)(ting)$/i,
-    /^(get)(ting)$/i,
-    /^(wet)(ting)$/i,
-    /^(pet)(ting)$/i,
-    /^(bet)(ting)$/i,
-    /^(net)(ting)$/i,
-    /^(jet)(ting)$/i,
-    /^(met)(ting)$/i,
-    /^(vet)(ting)$/i,
-    /^(yet)(ting)$/i
-  ];
-
-  for (const pattern of compoundPatterns) {
-    const match = word.match(pattern);
-    if (match) {
-      return [match[1], match[2]];
-    }
-  }
-  return null;
-}
+// 复合词逻辑按新文档移除（遵循统一优先级流程）
 
 /**
  * 主要的音节拆分函数
  */
 // 允许未来接收 IPA/提示选项
-export interface SplitOptions {
-  ipa?: string;
-}
-
-import { TEAM_SPLIT_EXCEPTIONS_MAP, FORCE_MERGE_TEAMS, matchesException } from './phonics-exceptions';
-
-function shouldSplitTeam(word: string, index: number, team: string, opts?: SplitOptions): boolean {
-  if (matchesException(word, TEAM_SPLIT_EXCEPTIONS_MAP[team])) return true;
-  if (matchesException(word, FORCE_MERGE_TEAMS[team])) return false;
-  // 预留：若提供 IPA，且检测到该组合两侧存在明显音节分界（如 . 或 ˈ/ˌ 位于组合之间），则选择拆分
-  if (opts?.ipa) {
-    const ipa = opts.ipa;
-    if (/[\.ˈˌ]/.test(ipa)) {
-      // 粗略启发：若 IPA 中的分界点数量 >= 1 且组合被标注为跨音节的常见词（待扩展），可返回 true
-      // 这里保守返回 false，避免误拆；规则可按需要增强
-    }
-  }
-  return false;
-}
+export interface SplitOptions {}
 
 export function splitSyllables(word: string, opts?: SplitOptions): string {
   if (!word || word.length < 2) return word;
@@ -327,13 +237,7 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
   const lowerWord = word.toLowerCase();
   let result: string[] = [];
 
-  // 1. 检查复合词
-  const compound = isCompoundWord(word);
-  if (compound) {
-    return compound.join('-');
-  }
-
-  // 2. 检查 Final Stable 以及 C+le 族
+  // 1) Final Stable（C+le 族 和 词尾整体后缀）
   const finalStable = findFinalStableSyllable(lowerWord);
   if (finalStable) {
     const beforeStable = lowerWord.slice(0, -finalStable.length);
@@ -348,7 +252,7 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
     return finalStable;
   }
 
-  // 3. 强前缀（如 dis-/re-/pre-）在基础扫描前切分：disappear → dis-appear
+  // 2) 强前缀（文档：前缀最高优先）
   for (const p of STRONG_PREFIXES) {
     if (lowerWord.startsWith(p) && lowerWord.length > p.length) {
       const rest = lowerWord.slice(p.length);
@@ -360,9 +264,19 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
     }
   }
 
-  // 5. 检查Magic-e
+  // 3) Magic-e（V-C-e）：将末尾 -Ce 作为整体，与前面断开：c-ake
   if (isMagicE(lowerWord)) {
-    return lowerWord; // Magic-e结构不拆分
+    // 找到最后一个 -C e 结构的位置：... V C e$
+    const m = lowerWord.match(/^(.*?)([bcdfghjklmnpqrstvwxz])e$/);
+    if (m) {
+      const head = m[1];
+      const tail = m[2] + 'e';
+      if (head) {
+        const beforeSplit = splitSyllables(head, opts);
+        return `${beforeSplit}-${tail}`;
+      }
+      return tail;
+    }
   }
 
   // 6. 基础音节拆分逻辑
@@ -375,7 +289,17 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
     const nextChar = lowerWord[i + 1];
     const nextNextChar = lowerWord[i + 2];
 
-    // 三合字母优先
+    // 词首：特殊首字母（kn/wr/gn/tw）整体保留
+    if (i === 0 && nextChar) {
+      const special2 = (char + nextChar).toLowerCase();
+      if (SPECIAL_INITIALS.includes(special2)) {
+        current += special2;
+        i += 2;
+        continue;
+      }
+    }
+
+    // 4) 三合字母（tch/squ/spr/str/scr/shr）优先
     const tri = (char || '') + (nextChar || '') + (nextNextChar || '');
     if (tri.length === 3 && CONSONANT_TRIGRAPHS.includes(tri.toLowerCase())) {
       if (current === '') {
@@ -388,14 +312,14 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
       continue;
     }
 
-    // R控制三字母（如 ear/air/our 等）
+    // 5) R控制三字母（air/are/ear/ere/eer/ire/ore/oar）
     if (tri.length === 3 && R_CONTROLLED_TRIGRAMS.includes(tri.toLowerCase())) {
       current += tri;
       i += 3;
       continue;
     }
 
-    // 先处理辅音二合字母，作为一个整体加入当前音节
+    // 6) 辅音二合字母（ch/sh/th/wh/ph/gh）整体
     if (nextChar && CONSONANT_DIGRAPHS.includes((char + nextChar).toLowerCase())) {
       // 若当前为空直接收集该二合字母；否则按原逻辑追加
       if (current === '') {
@@ -413,54 +337,52 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
       continue;
     }
 
-    // 检查元音字母组合
-    if (nextChar && isVowelTeam(char + nextChar)) {
-      const team = (char + nextChar).toLowerCase();
-      if (!shouldSplitTeam(word, i, team, opts)) {
-        current += char + nextChar;
-        i += 2;
-        continue;
-      }
-      // 否则按单个字符继续，由后续逻辑处理分拆
+    // 7) 元音字母组合（最长优先，支持 2/3/4）
+    const vt = matchVowelTeamAt(lowerWord, i);
+    if (vt) {
+      const team = vt.toLowerCase();
+      current += lowerWord.slice(i, i + team.length);
+      i += team.length;
+      continue;
     }
 
-    // 检查R控制的元音
+    // 8) R控制两字母（ar/er/ir/or/ur）
     if (nextChar && isRControlledVowel(char + nextChar)) {
       current += char + nextChar;
       i += 2;
       continue;
     }
 
-    // 检查单个元音
+    // 9) Word Families（an/en/in/on/un）整体
+    const wf = matchWordFamilyAt(lowerWord, i);
+    if (wf) {
+      current += wf;
+      i += 2;
+      continue;
+    }
+
+    // 10) 单个元音
     if (/[aeiouy]/i.test(char)) {
       current += char;
       i++;
       continue;
     }
 
-    // 处理辅音（含 x 特例：按两个辅音参与拆分）
+    // 11) 处理辅音（含 x 特例：按两个辅音参与拆分）
     if (/[bcdfghjklmnpqrstvwxz]/i.test(char)) {
       const isX = char.toLowerCase() === 'x';
       // 如果当前音节为空，添加辅音
       if (current === '') {
         current += char;
       } else {
-        // 检查是否需要拆分
+        // 检查是否需要拆分（VCV/VCCV）
         if (nextChar && /[aeiouy]/i.test(nextChar)) {
           // VC/CV 拆分
           syllables.push(current);
           current = char;
         } else if (nextChar && nextNextChar && /[aeiouy]/i.test(nextNextChar)) {
           // VCCV：两个辅音夹元音
-          // 若当前音节以偏向开音节的组合结尾（如 'ti'），倾向于直接在此处断开（ti-cket）
-          const endsOpenPreferred = PREFERRED_OPEN_ENDINGS.some(end => current.endsWith(end));
-          if (endsOpenPreferred) {
-            syllables.push(current);
-            current = '';
-            // 不吸收当前辅音，留给下一音节
-            continue;
-          }
-          // 常规处理：在两辅音之间拆分，优先保留后面的起始辅音丛
+          // 常规处理：在两辅音之间拆分，若后两辅音能成起始丛则 CC/
           current += char;
           const nextPair = (nextChar + nextNextChar).toLowerCase();
           if (INITIAL_BLENDS.some(b => nextPair.startsWith(b))) {
@@ -489,27 +411,12 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
   // 过滤空音节并连接
   const filtered = syllables.filter(s => s.length > 0);
 
-  // 开音节优先修正：
-  // 若出现 [元音 + 单辅音] | [以元音开头的下一音节]，将该辅音右移到下一音节。
-  const isVowel = (ch: string) => /[aeiouy]/i.test(ch);
-  const isConsonant = (ch: string) => /[bcdfghjklmnpqrstvwxz]/i.test(ch);
-  for (let i = 0; i < filtered.length - 1; i++) {
-    const left = filtered[i];
-    const right = filtered[i + 1];
-    if (!left || !right) continue;
-    const last = left.slice(-1);
-    const preLast = left.slice(-2, -1);
-    const firstRight = right[0];
-    // 确保满足 VCV：左以元音+单辅音结尾，右以元音开头
-    if (isConsonantAt(lowerWord, lowerWord.indexOf(last, 0)) && isVowel(firstRight) && isVowel(preLast)) {
-      // 右移该辅音到下一个音节开头（如 tig-er → ti-ger）
-      filtered[i] = left.slice(0, -1);
-      filtered[i + 1] = last + right;
-      // 如果左侧被清空（理论上不应发生），回退
-      if (filtered[i].length === 0) {
-        filtered[i] = left;
-        filtered[i + 1] = right;
-      }
+  // 特殊词尾：mb 不再拆（如 lamb → lamb）
+  if (lowerWord.endsWith('mb')) {
+    // 若已产生边界，将末尾两字母并回
+    const joined = filtered.join('');
+    if (joined.endsWith('mb')) {
+      return joined; // 保持整体
     }
   }
 
@@ -517,47 +424,10 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
   const JOIN = (parts: string[]) => parts.join('-');
   let baseJoined = JOIN(filtered);
 
-  // 教学友好：词首起始辅音丛 + 元音组合 → 丛-组合-(尾辅音)
-  // 如 tree → tr-ee，street → str-eet（尾辅音由后续规则处理为 -t）
-  (function beautifyOnsetBlendVowelTeam() {
-    const TEAMS = ['oo', 'ee', 'ea', 'oa', 'ai', 'ay', 'oi', 'oy', 'au', 'aw', 'ue', 'ew'];
-    const lower = word.toLowerCase();
-    let blend: string | null = null;
-    // 优先三辅音丛，再两辅音丛
-    for (const cl of LEADING_TRIPLE_CLUSTERS) {
-      if (lower.startsWith(cl) && TEAMS.includes(lower.slice(cl.length, cl.length + 2))) {
-        blend = cl; break;
-      }
-    }
-    if (!blend) {
-      for (const bl of INITIAL_BLENDS) {
-        if (lower.startsWith(bl) && TEAMS.includes(lower.slice(bl.length, bl.length + 2))) {
-          blend = bl; break;
-        }
-      }
-    }
-    if (blend) {
-      const team = lower.slice(blend.length, blend.length + 2);
-      const rest = word.slice(blend.length + 2);
-      if (rest.length === 0) {
-        baseJoined = `${blend}-${team}`;
-      } else if (rest.length === 1 && isConsonantChar(rest)) {
-        baseJoined = `${blend}-${team}-${rest}`;
-      } else {
-        // 仅当 rest 很短时再加一段，否则并回组合后整体：
-        if (rest.length <= 2) {
-          baseJoined = `${blend}-${team}-${rest}`;
-        } else {
-          baseJoined = `${blend}-${team}${rest}`;
-        }
-      }
-    }
-  })();
-  // 词首 VCCCV：若以常见三辅音丛开头，且其后为元音，则在该丛后强制断开
+  // 词首 VCCCV：若以常见三辅音丛开头，且其后为元音，则在该丛后断开（street → str-eet）
   for (const cl of LEADING_TRIPLE_CLUSTERS) {
     if (lowerWord.startsWith(cl) && isVowelAt(lowerWord, cl.length)) {
       const expected = `${cl}-${lowerWord.slice(cl.length)}`;
-      // 若当前没有在该位置断开，则覆盖为预期形式
       if (!baseJoined.startsWith(`${cl}-`)) {
         baseJoined = expected;
       }
@@ -576,7 +446,11 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
       }
     }
   };
-  ['ly', 'ness', 'ing', 'er'].forEach(ensureBoundaryBefore);
+  [
+    // 常见后缀边界修正，覆盖文档条目
+    'ly', 'ness', 'ing', 'er', 'est', 'ment', 'less', 'ful', 'ous', 'al', 'y', 'en',
+    'able', 'ible', 'tion', 'sion', 'ture', 'cian', 'cial', 'tial', 'ious', 'eous', 'age', 'ure', 'ed'
+  ].forEach(ensureBoundaryBefore);
 
   // 若基础拆分没有产生断点（或仅一个音节），尝试应用词缀启发
   if (!baseJoined.includes('-')) {
@@ -600,55 +474,6 @@ export function splitSyllables(word: string, opts?: SplitOptions): string {
       return suffix;
     }
   }
-
-  // 展示友好规则：词尾为 {vowelTeam} + 单辅音，突出长元音连读 → 如 school → sch-oo-l
-  (function beautifyEndingVowelTeamSingleConsonant() {
-    const TEAMS = ['oo', 'ee', 'ea', 'oa'];
-    const segs = baseJoined.split('-').filter(Boolean);
-    if (segs.length === 0) return;
-    const last = segs[segs.length - 1];
-    const lower = word.toLowerCase();
-    // 情况A：最后一段本身是 team+辅音（如 'ool'）→ 拆为 'oo' + 'l'
-    for (const team of TEAMS) {
-      if (last.length > team.length && last.toLowerCase().endsWith(team) === false) {
-        const tail = last.slice(-1);
-        const body = last.slice(0, -1);
-        const maybeRC = (body.slice(-2).toLowerCase() + tail.toLowerCase());
-        // 若与 R 控制组合/三字母组合匹配，则不要拆分（如 'ear'）
-        if (
-          isConsonantChar(tail) &&
-          body.toLowerCase().endsWith(team) &&
-          lower.endsWith(body + tail) &&
-          !R_CONTROLLED_TRIGRAMS.includes(maybeRC) &&
-          !R_CONTROLLED_VOWELS.includes(maybeRC)
-        ) {
-          segs[segs.length - 1] = body;
-          segs.push(tail);
-          baseJoined = segs.join('-');
-          return;
-        }
-      }
-    }
-    // 情况B：最后两段已是 team + 单辅音（如 ['sch-oo','l']）→ 保持为 team-辅音
-    if (segs.length >= 2) {
-      const last2 = segs[segs.length - 2];
-      const tail = segs[segs.length - 1];
-      if (tail.length === 1 && isConsonantChar(tail)) {
-        for (const team of TEAMS) {
-          const combo = (team + tail.toLowerCase());
-          if (
-            last2.toLowerCase().endsWith(team) &&
-            lower.endsWith(team + tail) &&
-            !R_CONTROLLED_TRIGRAMS.includes(combo) &&
-            !R_CONTROLLED_VOWELS.includes(combo)
-          ) {
-            baseJoined = segs.join('-');
-            return;
-          }
-        }
-      }
-    }
-  })();
 
   return baseJoined;
 }

@@ -1,150 +1,168 @@
-# 单词拼读拆分原则
+# 自然拼读拆分原则（含示例）
 
-## 1. 音节拆分优先原则
-音节是拼读的基本单元，拆分规则应首先依据**音节划分**进行。音节拆分不仅有助于记忆，而且符合自然拼读习惯。
-
-### 1.0 字母分类与程序判定（新增）
-
-- **元音字母（Vowels）**: a, e, i, o, u
-- **半元音/半辅音**: y（在不同位置有不同角色），w（常出现在元音组合中）
-- **辅音字母（Consonants）**: 其余英文字母（不含上述元音与 y）
-
-程序中的判定（精简版）：
-- `y` 作为元音的条件（其余情况视作辅音）
-  - 位于词尾：如 my、happy
-  - 两侧为辅音（或右侧为词尾）：gym、myth
-  - 在元音组合中由组合规则覆盖（如 ay/ey/oy 已作为二合元音整体处理）
-- `w` 不单独判定为元音，出现在组合 `ow/ew` 等中按元音组合处理
-- `qu` 按一个辅音单位处理（q+u 合并）
-
-代码中提供统一的 `isVowelAt(word, index)` 与 `isConsonantAt(word, index)`，所有核心拆分逻辑均通过这两个函数判定字母类别，从而保证“先音节、再词缀”的优先级清晰稳定。
-
-### 1.1 音节划分规则：
-- **开音节与闭音节**：
-  - **开音节**：以元音结尾，元音通常发长音（如 `ti` 在 `tiger` 中，拆分为 `ti-ger`）。
-  - **闭音节**：以辅音结尾，元音通常发短音（如 `cat` /kæt/）。
-
-- **常见音节模式**：
-  - **CVC模式**：辅音-元音-辅音（如 `cat` /kæt/）。
-  - **VCV模式**：元音-辅音-元音（如 `open` /ˈoʊpən/，拆分为 `o-pen`）。
-  - **C+le结尾**：以辅音和 `le` 结尾的单词，`le` 应作为一个整体音节（如 `little` → `lit-tle`）。
-  - **VCCCV模式**：多个辅音之间拆分时应优先识别常见辅音丛，如 `str`（如 `street` → `str-eet`）等。
-
-### 1.2 音节划分示例：
-- **Tiger** → `ti-ger`（符合拼读习惯）
-- **Little** → `lit-tle`（符合C+le结尾规则）
-- **Ticket** → `ti-cket`（符合音节拆分规则）
+> 用法：从左到右扫描，**按优先级由高到低匹配**；一旦命中规则，**整体保留**并在边界处拆分；若都未命中，再退回到通用音节规则（CVC/VCV/C+le 等）。
 
 ---
 
-## 2. 字母组合和常见拼读规则
-在音节拆分的基础上，结合常见字母组合和发音规则进行细化拆分。这有助于符合拼读记忆习惯，特别是对于英语中常见的字母组合。
+## 0. 字母分类（用于判定 C/V/半辅音）
 
-### 2.1 元音组合和发音规则：
-- **ea**：通常发 /iː/（如 `sea` /siː/），也有例外发 /ɛ/（如 `bread` /brɛd/）。
-- **ou**：通常发 /aʊ/（如 `out` /aʊt/），也可能发 /oʊ/（如 `though` /ðoʊ/）。
-- **ai**：通常发 /eɪ/（如 `rain` /reɪn/），有时发 /aɪ/（如 `aisle` /aɪl/）。
-- **ei/ey**：通常发 /eɪ/（如 `rein` /reɪn/），但在某些单词中发 /iː/（如 `ceiling` /ˈsiːlɪŋ/）。
-- **oa**：通常发 /oʊ/（如 `boat` /boʊt/）。
-- **oo**：通常发 /uː/（如 `moon` /muːn/），有时发 /ʊ/（如 `foot` /fʊt/）。
+### 0.1 元音 Vowels
+a, e, i, o, u；有时 y 作元音（词尾或元音间）。
+- 示例（y 作元音）：hap-py，my（单音节不再拆）
 
-教学友好显示（新增）：
-- 当单词以 `oo` 后接单个辅音且位于词尾时，为了强调长元音连读，可将尾辅音单独成段：
-  - 例如：`school` 显示为 `sch-oo-l`（而不是 `sch-ool`）
-  - 该规则当前仅针对 `oo + 单辅音` 的词尾形式，避免过度拆分其它组合
-- **ue**：通常发 /uː/（如 `blue` /bluː/），有时发 /juː/（如 `cue` /kjuː/）。
-- **ie**：通常发 /aɪ/（如 `pie` /paɪ/），但有时发 /iː/（如 `field` /fiːld/）。
+### 0.2 辅音 Consonants
+b, c, d, f, g, h, j, k, l, m, n, p, q, r, s, t, v, x, z
+- 示例：cat → c-at（CVC）
 
-### 2.2 辅音组合规则：
-- **th**：发 /θ/ 或 /ð/（如 `think` /θɪŋk/ 和 `that` /ðæt/）。
-- **ch**：发 /tʃ/（如 `chat` /tʃæt/）。
-- **sh**：发 /ʃ/（如 `ship` /ʃɪp/）。
-- **str**：辅音连缀视作一个整体音节处理（如 `street` → `str-eet`）。
-- **spl**：如 `splash` /splæʃ/。
-- **scr**：如 `scream` /skriːm/。
-- **pl**：如 `place` /pleɪs/。
-- **fl**：如 `flat` /flæt/。
-- **gr**：如 `great` /ɡreɪt/。
-- **tr**：如 `tree` /triː/。
-
-### 2.3 常见后缀拆分规则：
-- **-er**：表示“做某事的人”，如 `runner` → `run-ner`。
-- **-ing**：表示进行时，通常拆分为一个音节，如 `running` → `run-ning`。
-- **-tion / -sion**：常见的名词后缀，应作为一个整体音节（如 `action` → `ac-tion`）。
-- **-able / -ible**：常见形容词后缀（如 `possible` → `pos-si-ble`，`manageable` → `man-age-able`）。
-- **-ly**：副词后缀，如 `quickly` → `quick-ly`。
-- **-ness**：名词后缀，表示状态或性质，如 `happiness` → `hap-pi-ness`。
+### 0.3 半辅音 Semi-vowels（滑音）
+w, y：词首多作辅音；在元音组合中常并入元音。
+- 示例（辅音）：wa-ter → wa-ter  
+- 示例（并入元音）：yel-low → yel-low；cow → c-ow
 
 ---
 
-## 3. 拼读习惯和词汇常识
-拼读习惯是拆分规则的重要部分，程序需要根据**英语的拼读规律**和**常见拼读习惯**来判断单词拆分。
-
-### 3.1 常见音节和词汇习惯：
-- **音节首位常见组合**：像 `ti` 在 `tiger` 和 `title` 中，`ti` 是常见的音节组合，应优先拆分为 `ti-ger`。
-- **字母组合 `le`**：当单词以 `-le` 结尾时，通常不再拆开 `le`，尤其是当前面的字母是辅音时，如 `little` → `lit-tle`。
-  
-### 3.2 拼读习惯示例：
-- **Tiger** → `ti-ger`（符合拼读习惯）
-- **Ticket** → `ti-cket`（符合常见拼读规则）
+## 1. 前缀（**最高优先**，只在词首匹配，整体保留）
+un-, re-, pre-, dis-, mis-, non-, over-, under-, sub-, inter-, super-, trans-, semi-, anti-, auto-
+- 示例：un-hap-py；re-do；pre-view；dis-like；mis-lead  
+           over-eat；un-der-ground；sub-ma-rine；in-ter-na-tion-al
 
 ---
 
-## 4. 处理不规则拼读的规则
-对于英语中的不规则拼读单词，音标拆分规则作为最后的补充，可以帮助程序识别那些不符合常见拼读规则的词汇。
-
-### 4.1 特殊单词和发音：
-- 如 `colonel` 发音为 /ˈkɜːrnəl/，程序应使用词典数据来处理这些特殊情况。
-- 不规则拼读词汇可以通过集成语音学词典进行处理，避免错误拆分。
+## 2. 特殊首字母（静音/固定组合，整体保留）
+kn, wr, mb（词尾静音 b）、tw, gn
+- 示例：kn-ock；wr-ist；la-mb（不再拆 la-mb 中的 mb）；tw-in；sig-nal → sig-nal
 
 ---
 
-## 5. 拆分规则优先级
-
-根据拼读记忆和发音习惯，以下为拆分规则的优先级：
-
-1. **音节拆分优先**：首先依据音节划分进行拆分，音节拆分帮助孩子理解发音节奏。
-   - **开音节与闭音节**的划分。
-   - **C+le结尾**规则。
-   
-2. **字母组合和常见拼读规则**：识别常见的字母组合（如 `ea`、`ou`）并进行拆分。
-
-3. **拼读习惯和词汇常识**：结合拼读习惯，识别常见的音节组合和发音。
-
-4. **音标拆分作为辅助**：最后根据音标发音规则补充拆分，特别是处理不规则发音的单词。
+## 3. 三字母辅音丛 Trigraphs（整体处理）
+squ, spr, str, scr, shr
+- 示例：squ-are；spr-ing → spr-ing；str-eet；scr-atch；shr-ink
 
 ---
 
-## 6. 程序实现拆分步骤
-
-### 6.1 输入词汇  
-程序接收用户输入的单词并进行拆分。
-
-### 6.2 音节拆分  
-根据音节拆分规则，程序判断音节位置并进行拆分。
-
-### 6.3 字母组合拆分  
-程序识别并拆分常见字母组合（如 `ea`、`ou` 等）。
-
-### 6.4 拼读习惯和词汇常识  
-程序根据拼读习惯和常见词汇规则进行进一步拆分。
-
-### 6.5 不规则拼读处理  
-对于不规则发音单词，程序使用词典或发音规则进行处理。
+## 4. 双字母辅音 Digraphs（整体处理）
+ch, tch, sh, th (/θ/ /ð/), wh, ph, gh（多读/不读，按词典策略）
+- 示例：ch-ip；tch → ma-tch；sh-ip；th-in / tha-t；wh-eel；ph-one；cou-gh（gh 不发音）
 
 ---
 
-## 7. 注意事项
-
-1. **语音学词典的结合**：
-   - 推荐结合语音学词典和发音数据库，以处理不规则的拼读和发音。
-
-2. **重音和音节划分**：
-   - 对于多音节单词，程序可以依据词性判断重音位置，并调整音节划分。
-
-3. **动态调整规则**：
-   - 对于复杂的单词组合，可以动态调整拆分规则，以适应不同的拼读情况。
+## 5. S-blends（整体处理）
+sc, sk, sl, sm, sn, sp, st, sw
+- 示例：st-op；sk-ate；sl-im；sm-all；sn-ap；sp-in；sw-im；sc-ar
 
 ---
 
-通过这份更为丰富的拆分规则，程序能够更加精确地拆分各种单词，符合拼读记忆的习惯和规则，确保拆分结果既符合语言的拼读规律，又能帮助用户记忆和正确发音。您可以直接复制并使用此规则文档。
+## 6. L-blends（整体处理）
+bl, cl, fl, gl, pl, sl
+- 示例：bl-ue；cl-ap；fl-ag；gl-ass；pl-an；sl-ed
+
+---
+
+## 7. R-blends（整体处理）
+br, cr, dr, fr, gr, pr, tr
+- 示例：br-own；cr-ab；dr-op；fr-og；gr-een；pr-int；tr-ain
+
+---
+
+## 8. 短元音（用于 CVC/闭音节判定）
+a, e, i, o, u（在闭音节中倾向短音）
+- 示例：cat → c-at；bed → b-ed；sit → s-it；hot → h-ot；sun → s-un
+
+---
+
+## 9. 单词家族 Word Families（整体处理，优先于单元音）
+an, en, in, on, un
+- 示例：pl-an；ch-icken → chick-en（注意优先保留 -en）
+
+---
+
+## 10. Magic-E（V-C-e：前元音多为长音，整体保留）
+a-e, e-e, i-e, o-e, u-e
+- 示例：c-ake；th-ese；t-ide；b-one；c-ute
+
+---
+
+## 11. R-controlled Vowels I（整体处理）
+ar, or, ur, er, ir
+- 示例：car；for；fur；her；bird → bird（单音节不再拆）
+
+---
+
+## 12. R-controlled Vowels II（整体处理）
+air, are, ear, eer, ere, ire, ore, oar
+- 示例：air-plane → air-plane；c-are；h-ear；d-eer；h-ere；w-ire；b-ore；oar
+
+---
+
+## 13. 元音团队 Vowel Teams（整体处理，长/双元音/变体）
+- ai/ay：r-ain，pl-ay
+- au/aw：au-thor，s-aw
+- oa/ow（长 o/双读）：b-oat，sn-ow
+- ee/ea/ey：s-eed，br-ead，k-ey
+- ie/igh：p-ie，l-ight（igh 视作一个单位）
+- oi/oy：c-oin，b-oy
+- ou/ow（多读）：out → ou-t，c-ow → c-ow，th-ough（ow/ough 特例见词典）
+- ui/ue/ew：fr-uit，bl-ue，n-ew
+
+> 说明：遇到多读（ea/ow/ou/ough 等），优先整体匹配，读音交由词典/后处理决定；拆分仅保留组合边界。
+
+---
+
+## 14. 常见后缀（整体保留，**高优先**，只在词尾匹配）
+- 名词/形容词：-tion，-sion，-ture，-ment，-ness，-less，-ful，-ous，-al，-y，-en
+- 形容词对比：-er，-est
+- 形容词能力：-able，-ible
+- 副词：-ly
+- 动词形态：-ing，-ed（规则化处理）
+- 专用：-cian，-cial，-tial，-ious，-eous，-age，-ure
+- 示例：ac-tion；vi-sion；pic-ture；en-joy-ment；hap-pi-ness；hope-less；beau-ti-ful；fa-mous；per-son-al；hap-py；gold-en；big-gest；teach-er；man-age-able；pos-si-ble；quick-ly；run-ning；play-ed；mu-si-cian；so-cial；spa-tial；cu-ri-ous；cou-ra-geous；vill-age；fu-ture
+
+---
+
+## 15. 硬/软 C 与 G（用于读音/次级拆分判断）
+- **c**：在 e/i/y 前多 /s/，否则 /k/；**ge/dge** 作为整体；**g** 在 e/i/y 前多 /dʒ/，否则 /g/
+- 示例：ci-ty（/s/），cat（/k/）；c-age → c-age；brid-ge → bri-dge  
+         gi-ant（/dʒ/），goat（/g/）
+
+---
+
+## 16. 通用音节规则（当以上均未命中时）
+
+### 16.1 CVC（闭音节）
+- 规则：C-V-C 切在首辅音后  
+- 示例：bas-ket → bas-ket（实际为 VC-CCVC，可结合 16.3）；cat → c-at
+
+### 16.2 VCV（优先 V/CV，其次 VC/V）
+- 规则：首选 **V/CV**（如 ti-ger → **ti-ger**），若 /C 不能做后音节合法起始丛，再用 **VC/V**  
+- 示例：ti-ger（V/CV）；lev-el（VC/V）
+
+### 16.3 VCCV（夹两辅音，优先 C/C；若后两辅音能成丛则 CC/）
+- 规则：rab-bit → rab-bit（C/C）；ex-tra → ex-tra（因 *tr* 为丛，拆在 **x | tra**）
+
+### 16.4 VCCCV（看后两/后三码是否为常见丛）
+- 规则：in-stru-ment → in-stru-ment（*str* 为丛）；pump-kin → pump-kin（mpk 不成丛 → C/C）
+
+### 16.5 C+le（稳定结尾，整体为一音节）
+- 规则：-ble/-cle/-dle/-fle/-gle/-kle/-ple/-tle/-zle  
+- 示例：ap-ple；ta-ble；lit-tle；cir-cle；bun-dle；gig-gle
+
+### 16.6 x 的处理（= /ks/ 或 /gz/，参与 VC/CV 计算）
+- 示例：ox-en → ox-en（/ks/）；ex-am-ple → ex-am-ple（首音 /ɪg-/ 时按 VC/V）
+
+---
+
+## 17. 匹配优先级（从高到低，命中即停）
+
+1) **前缀** → 2) **特殊首字母** → 3) **三字母辅音丛** → 4) **双字母辅音** →  
+5) **S/L/R-blends** → 6) **后缀** → 7) **Magic-E** →  
+8) **R-controlled**（I/II）→ 9) **Vowel Teams** → 10) **Word Families** →  
+11) **短元音判定** → 12) **C/G 软硬**（读音）→ 13) **通用音节规则**
+
+> 提示：**最长优先**（如先匹配 *str* 而不是 *st*）；**位置限制**（前缀只在词首，后缀只在词尾）；**w/y 位置判定**（词首多辅音，词中/尾多并入元音组合）。
+
+---
+
+## 18. 复杂/多读的处理建议（实现提示）
+- **ea/ow/ou/ough/gh** 等多读：拆分只保留组合边界；读音交由词典/概率表。  
+- 示例：th-ough，th-rough，c-ough，th-ought（均整体保留 ough）
+
